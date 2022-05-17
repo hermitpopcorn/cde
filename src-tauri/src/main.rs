@@ -10,6 +10,8 @@ use mongodb::{bson::{doc, Document}, options::{ClientOptions}, Client, Database}
 use once_cell::sync::OnceCell;
 use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::{anyhow, Error};
+use serde_json::Value;
+use bson::oid::ObjectId;
 
 static DB: OnceCell<Database> = OnceCell::new();
 
@@ -40,7 +42,6 @@ async fn connect_client() -> Result<Client, Error> {
 	// Attempt connection
 	match client.database("admin").run_command(doc! {"ping": 1}, None).await {
 		Ok(_) => {
-			println!("Connected to database.");
 			return Ok(client);
 		},
 		_ => {
@@ -54,17 +55,52 @@ fn print_type_of<T>(_: &T) {
 	println!("{}", std::any::type_name::<T>())
 }
 
+#[allow(unreachable_code)]
 #[tauri::command]
-async fn insert_dummytest() {
+async fn save_document(id: Value, tsu: Value, tsa: Value, the_type: Value, note: Value, volume: Value, page: Value) -> tauri::Result<bool> {
 	let start = SystemTime::now();
-	let since_the_epoch = start
-			.duration_since(UNIX_EPOCH)
-			.expect("Time went backwards");
+	let since_the_epoch = start.duration_since(UNIX_EPOCH).unwrap();
 
 	let db = DB.get().unwrap();
-	let collection = db.collection::<Document>("dummytest");
-	let doc = doc! { "time": since_the_epoch.as_secs() as u32 };
-	collection.insert_one(doc, None).await.unwrap();
+	let collection = db.collection::<Document>(COLLECTION_NAME);
+	
+	let mut doc: Document;
+	let mut undoc: Document = doc!{};
+	let oid: ObjectId;
+
+	if id.is_null() {
+		doc = doc!{ "created": since_the_epoch.as_secs() as u32 };
+	} else {
+		doc = doc!{ "updated": since_the_epoch.as_secs() as u32 };
+	}
+
+	if !tsu.is_null() { doc.insert("tsu", tsu.as_str()); }
+	if !tsa.is_null() { doc.insert("tsa", tsa.as_str()); }
+	if !the_type.is_null() { doc.insert("type", the_type.as_str()); }
+	if !note.is_null() { doc.insert("note", note.as_str()); }
+	if !volume.is_null() { doc.insert("volume", volume.as_str()); }
+	if !page.is_null() { doc.insert("page", page.as_str()); }
+
+	if !id.is_null() {
+		if tsu.is_null() { undoc.insert("tsu", ""); }
+		if tsa.is_null() { undoc.insert("tsa", ""); }
+		if the_type.is_null() { doc.insert("type", ""); }
+		if note.is_null() { undoc.insert("note", ""); }
+		if volume.is_null() { undoc.insert("volume", ""); }
+		if page.is_null() { undoc.insert("page", ""); }
+	}
+	
+	if id.is_null() {
+		collection.insert_one(doc, None).await.unwrap();
+		return Ok(true);
+	} else {
+		let mut setdoc = doc!{};
+		if doc.len() > 0 { setdoc.insert("$set", doc); }
+		if undoc.len() > 0 { setdoc.insert("$unset", undoc); }
+		oid = ObjectId::parse_str(id.as_str().unwrap()).unwrap();
+		collection.find_one_and_update(doc!{ "_id": oid, }, setdoc, None).await.unwrap();
+		return Ok(true);
+	}
 }
 
 #[tauri::command]
@@ -85,7 +121,7 @@ async fn get_all_documents() -> Vec<Document> {
 #[tokio::main]
 async fn main() {
 	tauri::Builder::default()
-		.invoke_handler(tauri::generate_handler![insert_dummytest, get_all_documents, db_connect])
+		.invoke_handler(tauri::generate_handler![save_document, get_all_documents, db_connect])
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");
 }

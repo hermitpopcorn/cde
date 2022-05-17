@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/tauri'
 	import { onMount } from 'svelte'
+	import { createEventDispatcher } from 'svelte'
+	const dispatch = createEventDispatcher()
 
 	let data = []
 	let pageSize = 50
@@ -16,7 +18,7 @@
 	let filteredData = []
 	$: rows = filteredData.slice((currentPage -1) * pageSize, currentPage * pageSize)
 
-	const fetchData = async () => {
+	export const fetchData = async () => {
 		data = await invoke('get_all_documents')
 		let index = 1
 		for (let i in data) {
@@ -83,7 +85,7 @@
 	const formatDataText = (tsu, tsa) => {
 		const makeTextObject = (string) => {
 			let finalArray = []
-			string = string.match(/([^[\]]+|\[\])/g).map( function(val) { return val==="[]" ? null : val; })
+			string = string.match(/([^[\]]+|\[\])/g).map( function(val) { return val==="[]" ? null : val })
 			for (let i = 0; i < string.length; i++) {
 				finalArray.push({
 					text: string[i],
@@ -104,6 +106,10 @@
 		return array
 	}
 
+	const edit = (row) => {
+		dispatch('edit', row)
+	}
+
 	onMount(() => {
 		fetchData()
 	})
@@ -116,27 +122,27 @@
 				No
 			</th>
 			<th class="volume">
-				Jilid
+				Vol
 				<input type="text" class="form-control" bind:value={filters.volume} on:keyup={(e) => { startFilterData(e, "volume") }}>
 			</th>
 			<th class="page">
-				Hal
+				Page
 				<input type="text" class="form-control" bind:value={filters.page} on:keyup={(e) => { startFilterData(e, "page") }}>
 			</th>
 			<th class="type">
-				Tipe
+				Type
 				<select class="form-control" bind:value={filters.type} on:change={(e) => { startFilterData(e, "type") }}>
 					<option value=""></option>
-					<option value="penambahan">T+</option>
-					<option value="pengurangan">K-</option>
+					<option value="penambahan">A+</option>
+					<option value="pengurangan">R-</option>
 				</select>
 			</th>
 			<th class="note">
-				Catatan
+				Note
 				<input type="text" class="form-control" bind:value={filters.note} on:keyup={(e) => { startFilterData(e, "note") }}>
 			</th>
 			<th class="text">
-				Teks
+				Text
 				<input type="text" class="form-control" bind:value={filters.text} on:keyup={(e) => { startFilterData(e, "text") }}>
 			</th>
 			<th class="action">
@@ -146,12 +152,16 @@
 	</thead>
 	<tbody>
 	{#if rows}
-		{#each rows as row}
-			<tr>
-				<td>{row.index}</td>
+		{#each rows as row, index}
+			<tr class={{'penambahan': 'amplification', 'pengurangan': 'reduction'}[row.type]}>
+				<td class="numbering">
+					{((currentPage - 1) * pageSize) + (index + 1)}
+					<br>
+					<span class="id">ID{row.index}</span>
+				</td>
 				<td>{row.volume ?? ""}</td>
 				<td>{row.page ?? ""}</td>
-				<td>{{'penambahan': 'T+', 'pengurangan': 'K-'}[row.type]}</td>
+				<td>{{'penambahan': 'A+', 'pengurangan': 'R-'}[row.type]}</td>
 				<td>{row.note ?? ""}</td>
 				<td>
 					{#each formatDataText(row.tsu, row.tsa) as p}
@@ -167,7 +177,7 @@
 					{/each}
 				</td>
 				<td class="actions">
-					<button class="btn btn-primary btn-sm" on:click={() => alert('edit')}>Edit</button>
+					<button class="btn btn-primary btn-sm" on:click={() => edit(row) }>Edit</button>
 					<button class="btn btn-danger btn-sm" on:click={() => alert('delete')}>Delete</button>
 				</td>
 			</tr>
@@ -212,11 +222,17 @@
 	p {
 		margin: 0.2em;
 	}
+	table {
+		margin-bottom: 5em;
+	}
 	th {
 		vertical-align: middle;
 	}
 	th.numbering {
 		width: 2%;
+	}
+	td.numbering span.id {
+		font-size: 0.7em;
 	}
 	th.volume {
 		width: 5%;
@@ -233,19 +249,32 @@
 	th.action {
 		width: 5%;
 	}
+	tr.amplification {
+		background: #e7f1ff;
+	}
+	tr.reduction {
+		background: #fde9e9;
+	}
 	td.actions button {
 		margin: 0.1em;
 	}
+	input, select {
+		padding: 0.2em;
+		font-size: 0.8em;
+	}
 	select {
+		text-align: center;
 		appearance: revert;
 		-moz-appearance: revert;
 		-webkit-appearance: revert;
 	}
 	.pagination-container {
-		padding: 0 1em;
+		padding: 1em 1em;
 		text-align: center;
+		background-color: rgba(0, 0, 0, 0.2);
 	}
 	ul.pagination {
 		display: inline-flex;
+		margin: 0;
 	}
 </style>
