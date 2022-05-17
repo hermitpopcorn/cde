@@ -2,7 +2,7 @@
 	import { invoke } from '@tauri-apps/api/tauri'
 	import { onMount } from 'svelte'
 	import { SvelteToast, toast } from '@zerodevx/svelte-toast'
-	import * as animateScroll from "svelte-scrollto";
+	import * as animateScroll from "svelte-scrollto"
 	import Datatable from './lib/Datatable.svelte'
 	import Form from './lib/Form.svelte'
 

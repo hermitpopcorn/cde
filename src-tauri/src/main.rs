@@ -55,7 +55,6 @@ fn print_type_of<T>(_: &T) {
 	println!("{}", std::any::type_name::<T>())
 }
 
-#[allow(unreachable_code)]
 #[tauri::command]
 async fn save_document(id: Value, tsu: Value, tsa: Value, the_type: Value, note: Value, volume: Value, page: Value) -> tauri::Result<bool> {
 	let start = SystemTime::now();
@@ -104,6 +103,16 @@ async fn save_document(id: Value, tsu: Value, tsa: Value, the_type: Value, note:
 }
 
 #[tauri::command]
+async fn remove_document(id: Value) -> tauri::Result<bool> {
+	let db = DB.get().unwrap();
+	let collection = db.collection::<Document>(COLLECTION_NAME);
+
+	let oid: ObjectId = ObjectId::parse_str(id.as_str().unwrap()).unwrap();
+	collection.delete_one(doc!{ "_id": oid }, None).await.unwrap();
+	return Ok(true);
+}
+
+#[tauri::command]
 async fn get_all_documents() -> Vec<Document> {
 	if DB.get().is_none() { return vec![]; }
 
@@ -121,7 +130,12 @@ async fn get_all_documents() -> Vec<Document> {
 #[tokio::main]
 async fn main() {
 	tauri::Builder::default()
-		.invoke_handler(tauri::generate_handler![save_document, get_all_documents, db_connect])
+		.invoke_handler(tauri::generate_handler![
+			db_connect,
+			get_all_documents,
+			save_document,
+			remove_document,
+		])
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");
 }

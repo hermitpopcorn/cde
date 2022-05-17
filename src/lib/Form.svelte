@@ -7,9 +7,9 @@
 	let form
 
 	const save = async () => {
-		const texts = form.text.split("\n");
-		const tsu = texts[0] || null;
-		const tsa = texts[1] || null;
+		const texts = form.text.split("\n")
+		const tsu = texts[0] || null
+		const tsa = texts[1] || null
 
 		let save = await invoke('save_document', {
 			id: form.id,
@@ -46,12 +46,12 @@
 	$: displayID = form.id ? `${form.index ? `(${form.index}) ` : ""}${form.id}` : ""
 
 	export const edit = (row) => {
-		form.index = row.index;
-		form.id = row._id.$oid;
-		form.type = row.type;
-		form.note = row.note ?? "";
-		form.volume = row.volume ?? "";
-		form.page = row.page ?? "";
+		form.index = row.index
+		form.id = row._id.$oid
+		form.type = row.type
+		form.note = row.note ?? ""
+		form.volume = row.volume ?? ""
+		form.page = row.page ?? ""
 		form.text = [row.tsu || "", row.tsa || ""].join("\n")
 	}
 

@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/tauri'
+import { toast } from '@zerodevx/svelte-toast'
 	import { onMount } from 'svelte'
 	import { createEventDispatcher } from 'svelte'
 	const dispatch = createEventDispatcher()
 
 	let data = []
-	let pageSize = 50
+	let pageSize = 20
 	let currentPage = 1
 	let filters = {
 		volume: "",
@@ -47,8 +48,15 @@
 			activeFilters.push(property)
 		}
 
+		const fixPage = () => {
+			if (currentPage > Math.ceil(filteredData.length / pageSize)) {
+				currentPage = Math.ceil(filteredData.length / pageSize)
+			}
+		}
+
 		if (activeFilters.length < 1) {
 			filteredData = data
+			fixPage()
 			return
 		}
 
@@ -75,10 +83,7 @@
 			return true
 		})
 
-		if (currentPage > Math.ceil(filteredData.length / pageSize)) {
-			currentPage = 1
-		}
-
+		fixPage()
 		appliedFilters = { ... filters }
 	}
 
@@ -108,6 +113,15 @@
 
 	const edit = (row) => {
 		dispatch('edit', row)
+	}
+
+	const remove = async (row) => {
+		let c = await window.confirm("Are you sure?")
+		if (c) {
+			await invoke("remove_document", { id: row._id.$oid })
+			toast.push("Data has been deleted.", { theme: { '--toastBackground': 'green' } })
+			fetchData()
+		}
 	}
 
 	onMount(() => {
@@ -177,8 +191,8 @@
 					{/each}
 				</td>
 				<td class="actions">
-					<button class="btn btn-primary btn-sm" on:click={() => edit(row) }>Edit</button>
-					<button class="btn btn-danger btn-sm" on:click={() => alert('delete')}>Delete</button>
+					<button class="btn btn-primary btn-sm" on:click={() => edit(row)}>Edit</button>
+					<button class="btn btn-danger btn-sm" on:click={() => remove(row)}>Delete</button>
 				</td>
 			</tr>
 		{/each}
