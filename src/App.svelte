@@ -81,6 +81,13 @@
 		min-height: 4em;
 		margin-bottom: 3em;
 	}
+
+	:root {
+		--toastContainerTop: auto;
+		--toastContainerRight: auto;
+		--toastContainerBottom: 8rem;
+		--toastContainerLeft: calc(50vw - 8rem);
+  	}
 </style>
 
-<SvelteToast options={{ duration: 3000 }} />
+<SvelteToast options={{ duration: 2000, reversed: true, intro: { y: 192 } }} />
