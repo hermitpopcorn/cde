@@ -50,7 +50,7 @@ import { toast } from '@zerodevx/svelte-toast'
 
 		const fixPage = () => {
 			if (currentPage > Math.ceil(filteredData.length / pageSize)) {
-				currentPage = Math.ceil(filteredData.length / pageSize)
+				currentPage = Math.max(Math.ceil(filteredData.length / pageSize), 1)
 			}
 		}
 

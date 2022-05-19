@@ -12,6 +12,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::{anyhow, Error};
 use serde_json::Value;
 use bson::oid::ObjectId;
+use maplit::hashmap;
 
 static DB: OnceCell<Database> = OnceCell::new();
 
@@ -56,7 +57,11 @@ fn print_type_of<T>(_: &T) {
 }
 
 #[tauri::command]
-async fn save_document(id: Value, tsu: Value, tsa: Value, the_type: Value, note: Value, volume: Value, page: Value) -> tauri::Result<bool> {
+async fn save_document(
+	id: Option<&str>, tsu: Option<&str>, tsa: Option<&str>,
+	the_type: Option<&str>, note: Option<&str>, volume: Option<&str>, page: Option<&str>,
+	cause: Option<&str>, effects: Vec<&str>
+) -> tauri::Result<bool> {
 	let start = SystemTime::now();
 	let since_the_epoch = start.duration_since(UNIX_EPOCH).unwrap();
 
@@ -65,39 +70,52 @@ async fn save_document(id: Value, tsu: Value, tsa: Value, the_type: Value, note:
 	
 	let mut doc: Document;
 	let mut undoc: Document = doc!{};
-	let oid: ObjectId;
 
-	if id.is_null() {
-		doc = doc!{ "created": since_the_epoch.as_secs() as u32 };
-	} else {
-		doc = doc!{ "updated": since_the_epoch.as_secs() as u32 };
+	match id {
+		Some(_) => {
+			doc = doc!{ "created": since_the_epoch.as_secs() as u32 };
+		},
+		None => {
+			doc = doc!{ "updated": since_the_epoch.as_secs() as u32 };
+		},
+	};
+
+	let fields = hashmap!{
+		"tsu" => &tsu,
+		"tsa" => &tsa,
+		"type" => &the_type,
+		"note" => &note,
+		"volume" => &volume,
+		"page" => &page,
+		"cause" => &cause,
+	};
+	for (&field_name, variable_ref) in &fields {
+		match variable_ref {
+			Some(the_string) => {
+				doc.insert(field_name, the_string);
+			},
+			None => {
+				if id != None {
+					undoc.insert(field_name, "");
+				};
+			},
+		};
 	}
 
-	if !tsu.is_null() { doc.insert("tsu", tsu.as_str()); }
-	if !tsa.is_null() { doc.insert("tsa", tsa.as_str()); }
-	if !the_type.is_null() { doc.insert("type", the_type.as_str()); }
-	if !note.is_null() { doc.insert("note", note.as_str()); }
-	if !volume.is_null() { doc.insert("volume", volume.as_str()); }
-	if !page.is_null() { doc.insert("page", page.as_str()); }
-
-	if !id.is_null() {
-		if tsu.is_null() { undoc.insert("tsu", ""); }
-		if tsa.is_null() { undoc.insert("tsa", ""); }
-		if the_type.is_null() { doc.insert("type", ""); }
-		if note.is_null() { undoc.insert("note", ""); }
-		if volume.is_null() { undoc.insert("volume", ""); }
-		if page.is_null() { undoc.insert("page", ""); }
+	if effects.len() > 0 {
+		doc.insert("effects", effects);
+	} else {
+		if id != None { undoc.insert("effects", ""); }
 	}
 	
-	if id.is_null() {
+	if id == None {
 		collection.insert_one(doc, None).await.unwrap();
 		return Ok(true);
 	} else {
 		let mut setdoc = doc!{};
 		if doc.len() > 0 { setdoc.insert("$set", doc); }
 		if undoc.len() > 0 { setdoc.insert("$unset", undoc); }
-		oid = ObjectId::parse_str(id.as_str().unwrap()).unwrap();
-		collection.find_one_and_update(doc!{ "_id": oid, }, setdoc, None).await.unwrap();
+		collection.find_one_and_update(doc!{ "_id": ObjectId::parse_str(id.unwrap()).unwrap(), }, setdoc, None).await.unwrap();
 		return Ok(true);
 	}
 }

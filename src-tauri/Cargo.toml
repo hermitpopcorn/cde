@@ -24,6 +24,7 @@ bson = { version = "2", features = ["chrono-0_4"] } # Needed for using chrono da
 tokio = { version = "1", features = ["full"] }
 once_cell = "1"
 anyhow = "1"
+maplit = "1"
 
 [features]
 # by default Tauri runs in production mode

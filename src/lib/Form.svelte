@@ -19,6 +19,8 @@
 			note: form.note.length > 0 ? form.note : null,
 			volume: form.volume.length > 0 ? form.volume : null,
 			page: form.page.length > 0 ? form.page : null,
+			cause: form.cause.length > 0 ? form.cause : null,
+			effects: form.effects.filter((i) => i.length > 0),
 		})
 		if (save) {
 			toast.push("Data saved successfully.", { theme: { '--toastBackground': 'green' } })
@@ -36,6 +38,8 @@
 			volume: "",
 			page: "",
 			text: "",
+			cause: "",
+			effects: [],
 		}
 	}
 
@@ -53,6 +57,23 @@
 		form.volume = row.volume ?? ""
 		form.page = row.page ?? ""
 		form.text = [row.tsu || "", row.tsa || ""].join("\n")
+		form.cause = row.cause ?? ""
+		form.effects = row.effects ?? []
+	}
+
+	const handleInputKeyup = (e: Event) => {
+		if (!(e instanceof KeyboardEvent)) { return }
+		
+		var kbdE: KeyboardEvent = e;
+		if (kbdE.ctrlKey && kbdE.key === "Enter") {
+			return save()
+		}
+		if (kbdE.ctrlKey && kbdE.key === "n") {
+			return clear()
+		}
+		if (kbdE.ctrlKey && kbdE.key === "d") {
+			return clearID()
+		}
 	}
 
 	clear()
@@ -62,7 +83,7 @@
 	<div class="accordion-item">
 		<div id="form-collapsible" class="accordion-collapse collapse show" aria-labelledby="form-heading" data-bs-parent="#accordion">
 			<div class="accordion-body">
-				<form id="input-form">
+				<form id="input-form" on:keyup={(e) => { handleInputKeyup(e) }}>
 					<div class="row" style="align-items: center">
 						<div class="col mb-2">
 							<div class="form-group">
@@ -74,12 +95,6 @@
 									<input class="form-check-input" type="radio" name="type" id="input-type-reduction" value={"pengurangan"} bind:group={form.type}>
 									<label class="form-check-label" for="input-type-reduction">Reduction</label>
 								</div>
-							</div>
-						</div>
-						<div class="col-6 mb-2">
-							<div class="form-group">
-								<label for="input-note">Note</label>
-								<input type="text" class="form-control" id="input-note" name="note" bind:value={form.note}>
 							</div>
 						</div>
 						<div class="col mb-2">
@@ -94,6 +109,12 @@
 								<input type="text" class="form-control" id="input-page" name="page" bind:value={form.page}>
 							</div>
 						</div>
+						<div class="col-6 mb-2">
+							<div class="form-group">
+								<label for="input-note">Note</label>
+								<input type="text" class="form-control" id="input-note" name="note" bind:value={form.note}>
+							</div>
+						</div>
 					</div>
 					<div class="row">
 						<div class="col mb-2">
@@ -103,12 +124,34 @@
 							</div>
 						</div>
 					</div>
+					<div class="row">
+						<div class="col mb-2">
+							<div class="form-group h-100 d-flex flex-column">
+								<label for="input-text">Cause</label>
+								<textarea class="form-control flex-fill" id="input-cause" name="cause" rows="2" bind:value={form.cause}></textarea>
+							</div>
+						</div>
+						<div class="col mb-2">
+							<div class="form-group">
+								<label for="input-text">Effects</label>
+								<div class="d-grid gap-2">
+									{#each form.effects as effect, index}
+										<div class="input-group">
+											<input type="text" class="form-control" name={`effect[${index}]`} bind:value={effect}>
+											<button class="btn btn-danger" type="button" on:click={() => { form.effects = form.effects.filter((_, i) => i !== index); }}>X</button>
+										</div>
+									{/each}
+									<button type="button" class="btn btn-sm btn-primary" on:click={() => { form.effects = [...form.effects, ""] }}>+ Add</button>
+								</div>
+							</div>
+						</div>
+					</div>
 					<div class="row justify-content-between">
 						<div class="col mb-2">
 							<div class="d-flex gap-2">
 								<div class="flex-grow-1">
 									<div class="form-group">
-										<input type="text" class="form-control" id="input-id" name="_id" value={displayID} readonly on:click={() => { clearID() }}>
+										<input type="text" class="form-control" id="input-id" name="_id" value={displayID} readonly>
 									</div>
 								</div>
 								<div class="flex-shrink-1">

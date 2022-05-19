@@ -6,6 +6,10 @@
 	import Datatable from './lib/Datatable.svelte'
 	import Form from './lib/Form.svelte'
 
+	// Component binding
+	let form
+	let datatable
+
 	// ScrollTo
 	animateScroll.setGlobalOptions({
 		offset: 0,
@@ -29,10 +33,6 @@
 			toast.push("Successfully connected to database.", { theme: { '--toastBackground': 'red' } })
 		}
 	}
-	
-	// Component binding
-	let form
-	let datatable
 
 	onMount(() => { dbConnect() })
 </script>
@@ -85,7 +85,7 @@
 	:root {
 		--toastContainerTop: auto;
 		--toastContainerRight: auto;
-		--toastContainerBottom: 8rem;
+		--toastContainerBottom: 5rem;
 		--toastContainerLeft: calc(50vw - 8rem);
   	}
 </style>
