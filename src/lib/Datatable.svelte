@@ -17,7 +17,9 @@ import { toast } from '@zerodevx/svelte-toast'
 	}
 	let appliedFilters = { ... filters }
 	let filteredData = []
+
 	$: rows = filteredData.slice((currentPage -1) * pageSize, currentPage * pageSize)
+	$: currentPage = Math.min(Math.max(Math.ceil(filteredData.length / pageSize), 1), currentPage)
 
 	export const fetchData = async () => {
 		data = await invoke('get_all_documents')
@@ -48,15 +50,8 @@ import { toast } from '@zerodevx/svelte-toast'
 			activeFilters.push(property)
 		}
 
-		const fixPage = () => {
-			if (currentPage > Math.ceil(filteredData.length / pageSize)) {
-				currentPage = Math.max(Math.ceil(filteredData.length / pageSize), 1)
-			}
-		}
-
 		if (activeFilters.length < 1) {
 			filteredData = data
-			fixPage()
 			return
 		}
 
@@ -83,7 +78,6 @@ import { toast } from '@zerodevx/svelte-toast'
 			return true
 		})
 
-		fixPage()
 		appliedFilters = { ... filters }
 	}
 
@@ -124,6 +118,19 @@ import { toast } from '@zerodevx/svelte-toast'
 		}
 	}
 </script>
+
+<div class="row g-3 align-items-center px-4 justify-content-end">
+	<div class="col-auto">
+	  <label class="col-form-label" for="page-size-control">Items per page</label>
+	</div>
+	<div class="col-auto">
+	  <select class="form-control" id="page-size-control" bind:value={pageSize}>
+		<option value="20">20</option>
+		<option value="50">50</option>
+		<option value="100">100</option>
+	</select>
+	</div>
+</div>
 
 <table class="table w-100">
 	<thead>
