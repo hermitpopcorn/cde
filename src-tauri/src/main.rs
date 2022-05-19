@@ -10,7 +10,6 @@ use mongodb::{bson::{doc, Document}, options::{ClientOptions}, Client, Database}
 use once_cell::sync::OnceCell;
 use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::{anyhow, Error};
-use serde_json::Value;
 use bson::oid::ObjectId;
 use maplit::hashmap;
 
@@ -121,11 +120,11 @@ async fn save_document(
 }
 
 #[tauri::command]
-async fn remove_document(id: Value) -> tauri::Result<bool> {
+async fn remove_document(id: Option<&str>) -> tauri::Result<bool> {
 	let db = DB.get().unwrap();
 	let collection = db.collection::<Document>(COLLECTION_NAME);
 
-	let oid: ObjectId = ObjectId::parse_str(id.as_str().unwrap()).unwrap();
+	let oid: ObjectId = ObjectId::parse_str(id.unwrap()).unwrap();
 	collection.delete_one(doc!{ "_id": oid }, None).await.unwrap();
 	return Ok(true);
 }
