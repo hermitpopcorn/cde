@@ -23,14 +23,17 @@
 	const dbConnect = async () => {
 		dbConnecting = true
 		try {
-			await invoke("db_connect")
+			let connect: boolean = await invoke("db_connect")
 			dbConnecting = false
 			dbConnected = true
-			toast.push("Successfully connected to database.", { theme: { '--toastBackground': 'green' } })
+			if (connect) {
+				toast.push("Successfully connected to database.", { theme: { '--toastBackground': 'green' } })
+				datatable.fetchData()
+			}
 		} catch(e) {
 			dbConnecting = false
 			dbConnected = false
-			toast.push("Successfully connected to database.", { theme: { '--toastBackground': 'red' } })
+			toast.push("Failed to connect to database.", { theme: { '--toastBackground': 'red' } })
 		}
 	}
 

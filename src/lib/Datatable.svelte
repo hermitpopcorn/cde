@@ -123,10 +123,6 @@ import { toast } from '@zerodevx/svelte-toast'
 			fetchData()
 		}
 	}
-
-	onMount(() => {
-		fetchData()
-	})
 </script>
 
 <table class="table w-100">

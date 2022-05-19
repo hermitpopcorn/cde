@@ -11,22 +11,23 @@
 		const tsu = texts[0] || null
 		const tsa = texts[1] || null
 
-		let save = await invoke('save_document', {
-			id: form.id,
-			tsu: tsu,
-			tsa: tsa,
-			theType: form.type,
-			note: form.note.length > 0 ? form.note : null,
-			volume: form.volume.length > 0 ? form.volume : null,
-			page: form.page.length > 0 ? form.page : null,
-			cause: form.cause.length > 0 ? form.cause : null,
-			effects: form.effects.filter((i) => i.length > 0),
-		})
-		if (save) {
+		try {
+			await invoke('save_document', {
+				id: form.id,
+				tsu: tsu,
+				tsa: tsa,
+				theType: form.type,
+				note: form.note.length > 0 ? form.note : null,
+				volume: form.volume.length > 0 ? form.volume : null,
+				page: form.page.length > 0 ? form.page : null,
+				cause: form.cause.length > 0 ? form.cause : null,
+				effects: form.effects.filter((i) => i.length > 0),
+			})
 			toast.push("Data saved successfully.", { theme: { '--toastBackground': 'green' } })
 			dispatch('save')
-		} else {
-			toast.push("Failed to save data.", { theme: { '--toastBackground': 'red' } })
+		} catch(e) {
+			let message = (e as string).split(": ").pop()
+			toast.push(`Save failed: ${message}`, { theme: { '--toastBackground': 'red' }, duration: 5000 })
 		}
 	}
 	const clear = () => {

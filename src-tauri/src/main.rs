@@ -29,7 +29,7 @@ async fn db_connect() -> tauri::Result<bool> {
 		},
 		Err(msg) => {
 			println!("{}", msg);
-			return Err(tauri::Error::CreateWindow);
+			return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Could not connect to Database."))));
 		},
 	}
 }
@@ -39,7 +39,7 @@ async fn connect_client() -> Result<Client, Error> {
 	client_options.app_name = Some("CDE".to_string());
 	let client = Client::with_options(client_options)?;
 
-	// Attempt connection
+	// attempt connection
 	match client.database("admin").run_command(doc! {"ping": 1}, None).await {
 		Ok(_) => {
 			return Ok(client);
@@ -50,17 +50,13 @@ async fn connect_client() -> Result<Client, Error> {
 	};
 }
 
-#[allow(dead_code)]
-fn print_type_of<T>(_: &T) {
-	println!("{}", std::any::type_name::<T>())
-}
-
 #[tauri::command]
 async fn save_document(
 	id: Option<&str>, tsu: Option<&str>, tsa: Option<&str>,
 	the_type: Option<&str>, note: Option<&str>, volume: Option<&str>, page: Option<&str>,
 	cause: Option<&str>, effects: Vec<&str>
-) -> tauri::Result<bool> {
+) -> tauri::Result<()> {
+	// generate timestamp
 	let start = SystemTime::now();
 	let since_the_epoch = start.duration_since(UNIX_EPOCH).unwrap();
 
@@ -70,6 +66,7 @@ async fn save_document(
 	let mut doc: Document;
 	let mut undoc: Document = doc!{};
 
+	// fill created or updated depending on operation (insert/update)
 	match id {
 		Some(_) => {
 			doc = doc!{ "created": since_the_epoch.as_secs() as u32 };
@@ -94,6 +91,7 @@ async fn save_document(
 				doc.insert(field_name, the_string);
 			},
 			None => {
+				// if field value is empty and this is an update opertaion, unset
 				if id != None {
 					undoc.insert(field_name, "");
 				};
@@ -108,25 +106,33 @@ async fn save_document(
 	}
 	
 	if id == None {
-		collection.insert_one(doc, None).await.unwrap();
-		return Ok(true);
+		// insert operation
+		let result = collection.insert_one(doc, None).await;
+		if result.is_err() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Insert error.")))); }
+		return Ok(());
 	} else {
+		// update operation
+		// create container document
 		let mut setdoc = doc!{};
 		if doc.len() > 0 { setdoc.insert("$set", doc); }
 		if undoc.len() > 0 { setdoc.insert("$unset", undoc); }
-		collection.find_one_and_update(doc!{ "_id": ObjectId::parse_str(id.unwrap()).unwrap(), }, setdoc, None).await.unwrap();
-		return Ok(true);
+
+		let result = collection.find_one_and_update(doc!{ "_id": ObjectId::parse_str(id.unwrap()).unwrap(), }, setdoc, None).await;
+		if result.is_err() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Update error.")))); }
+		if result.unwrap().is_none() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Did not update any data. Maybe ID is specified despite not existing in database?")))); }
+		return Ok(());
 	}
 }
 
 #[tauri::command]
-async fn remove_document(id: Option<&str>) -> tauri::Result<bool> {
+async fn remove_document(id: Option<&str>) -> tauri::Result<()> {
 	let db = DB.get().unwrap();
 	let collection = db.collection::<Document>(COLLECTION_NAME);
 
 	let oid: ObjectId = ObjectId::parse_str(id.unwrap()).unwrap();
-	collection.delete_one(doc!{ "_id": oid }, None).await.unwrap();
-	return Ok(true);
+	let result = collection.delete_one(doc!{ "_id": oid }, None).await;
+	if result.is_err() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Delete error.")))); }
+	return Ok(());
 }
 
 #[tauri::command]
