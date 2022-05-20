@@ -83,12 +83,14 @@ import { toast } from '@zerodevx/svelte-toast'
 
 	const formatDataText = (tsu, tsa) => {
 		const makeTextObject = (string) => {
+			const isInBrackets = (str: string): boolean => str.startsWith('[') && str.endsWith(']')
+
 			let finalArray = []
-			string = string.match(/([^[\]]+|\[\])/g).map( function(val) { return val==="[]" ? null : val })
+			string = string.match(/([^[\]]+|(\[(.[^\]]+)\]))/g).map( function(val) { return val==="[]" ? null : val })
 			for (let i = 0; i < string.length; i++) {
 				finalArray.push({
-					text: string[i],
-					mark: (i % 2 == 1),
+					text: isInBrackets(string[i]) ? string[i].substr(1, string[i].length - 2) : string[i],
+					mark: isInBrackets(string[i]),
 				})
 			}
 			return finalArray
