@@ -232,7 +232,7 @@ import { toast } from '@zerodevx/svelte-toast'
 	</nav>
 </section>
 
-<style>
+<style type="text/scss">
 	th, td {
 		text-align: center;
 	}
@@ -244,33 +244,20 @@ import { toast } from '@zerodevx/svelte-toast'
 	}
 	th {
 		vertical-align: middle;
+
+		&.numbering { width: 2%; }
+		&.volume { width: 5%; }
+		&.page { width: 5%; }
+		&.type { width: 10%; }
+		&.note { width: 20%; }
+		&.action { width: 5%; }
 	}
-	th.numbering {
-		width: 2%;
+	tr {
+		&.amplification { background: #e7f1ff; }
+		&.reduction { background: #fde9e9; }
 	}
 	td.numbering span.id {
 		font-size: 0.7em;
-	}
-	th.volume {
-		width: 5%;
-	}
-	th.page {
-		width: 5%;
-	}
-	th.type {
-		width: 10%;
-	}
-	th.note {
-		width: 20%;
-	}
-	th.action {
-		width: 5%;
-	}
-	tr.amplification {
-		background: #e7f1ff;
-	}
-	tr.reduction {
-		background: #fde9e9;
 	}
 	td.actions button {
 		margin: 0.1em;

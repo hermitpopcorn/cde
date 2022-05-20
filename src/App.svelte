@@ -62,28 +62,26 @@
 	</section>
 </main>
 
-<style>
+<style type="text/scss">
 	:root {
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
 			Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-	}
-
-	section.connection {
-		background-color: rgba(255, 173, 173, 0.7);
-		vertical-align: middle;
-	}
-
-	section.datatable {
-		min-height: 4em;
-		margin-bottom: 3em;
-	}
-
-	:root {
 		--toastContainerTop: auto;
 		--toastContainerRight: auto;
 		--toastContainerBottom: 5rem;
 		--toastContainerLeft: calc(50vw - 8rem);
-  	}
+	}
+
+	section {
+		&.connection {
+			background-color: rgba(255, 173, 173, 0.7);
+			vertical-align: middle;
+		}
+		&.datatable {
+			min-height: 4em;
+			margin-bottom: 3em;
+		}
+	}
 </style>
 
 <SvelteToast options={{ duration: 2000, reversed: true, intro: { y: 192 } }} />
