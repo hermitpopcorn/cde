@@ -7,7 +7,7 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "cde",
+    "productName": "Comparative Data Entry",
     "version": "0.1.0"
   },
   "tauri": {
