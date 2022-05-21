@@ -53,7 +53,7 @@
 			</div>
 		</section>
 	{/if}
-	<section class="form">
+	<section class="form sticky-top">
 		<Form bind:this={form} on:save={() => { datatable.fetchData() }} />
 	</section>
 	<hr>

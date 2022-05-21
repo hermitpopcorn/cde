@@ -85,70 +85,76 @@
 		<div id="form-collapsible" class="accordion-collapse collapse show" aria-labelledby="form-heading" data-bs-parent="#accordion">
 			<div class="accordion-body">
 				<form id="input-form" on:keyup={(e) => { handleInputKeyup(e) }}>
-					<div class="row" style="align-items: center">
-						<div class="col mb-2">
-							<div class="form-group">
-								<div class="form-check">
-									<input class="form-check-input" type="radio" name="type" id="input-type-amplification" value={"penambahan"} bind:group={form.type} checked>
-									<label class="form-check-label" for="input-type-amplification">Amplification</label>
-								</div>
-								<div class="form-check">
-									<input class="form-check-input" type="radio" name="type" id="input-type-reduction" value={"pengurangan"} bind:group={form.type}>
-									<label class="form-check-label" for="input-type-reduction">Reduction</label>
-								</div>
-							</div>
-						</div>
-						<div class="col mb-2">
-							<div class="form-group">
-								<label for="input-volume">Volume</label>
-								<input type="text" class="form-control" id="input-volume" name="volume" bind:value={form.volume}>
-							</div>
-						</div>
-						<div class="col mb-2">
-							<div class="form-group">
-								<label for="input-page">Page</label>
-								<input type="text" class="form-control" id="input-page" name="page" bind:value={form.page}>
-							</div>
-						</div>
-						<div class="col-6 mb-2">
-							<div class="form-group">
-								<label for="input-note">Note</label>
-								<input type="text" class="form-control" id="input-note" name="note" bind:value={form.note}>
-							</div>
-						</div>
-					</div>
 					<div class="row">
-						<div class="col mb-2">
-							<div class="form-group">
-								<label for="input-text">Text</label>
-								<textarea class="form-control" id="input-text" name="text" rows="2" bind:value={form.text}></textarea>
-							</div>
-						</div>
-					</div>
-					<div class="row">
-						<div class="col mb-2">
-							<div class="form-group h-100 d-flex flex-column">
-								<label for="input-text">Cause</label>
-								<textarea class="form-control flex-fill" id="input-cause" name="cause" rows="2" bind:value={form.cause}></textarea>
-							</div>
-						</div>
-						<div class="col mb-2">
-							<div class="form-group">
-								<label for="input-text">Effects</label>
-								<div class="d-grid gap-2">
-									{#each form.effects as effect, index}
-										<div class="input-group">
-											<input type="text" class="form-control" name={`effect[${index}]`} bind:value={effect}>
-											<button class="btn btn-danger" type="button" on:click={() => { form.effects = form.effects.filter((_, i) => i !== index); }}>X</button>
+						<div class="col-lg-6">
+							<div class="row align-items-center">
+								<div class="col">
+									<div class="form-group">
+										<div class="form-check">
+											<input class="form-check-input" type="radio" name="type" id="input-type-amplification" value={"penambahan"} bind:group={form.type} checked>
+											<label class="form-check-label" for="input-type-amplification">Amplification</label>
 										</div>
-									{/each}
-									<button type="button" class="btn btn-sm btn-primary" on:click={() => { form.effects = [...form.effects, ""] }}>+ Add</button>
+										<div class="form-check">
+											<input class="form-check-input" type="radio" name="type" id="input-type-reduction" value={"pengurangan"} bind:group={form.type}>
+											<label class="form-check-label" for="input-type-reduction">Reduction</label>
+										</div>
+									</div>
+								</div>
+								<div class="col">
+									<div class="form-group">
+										<label for="input-volume">Volume</label>
+										<input type="text" class="form-control" id="input-volume" name="volume" bind:value={form.volume}>
+									</div>
+								</div>
+								<div class="col">
+									<div class="form-group">
+										<label for="input-page">Page</label>
+										<input type="text" class="form-control" id="input-page" name="page" bind:value={form.page}>
+									</div>
+								</div>
+								<div class="col-6">
+									<div class="form-group">
+										<label for="input-note">Note</label>
+										<input type="text" class="form-control" id="input-note" name="note" bind:value={form.note}>
+									</div>
+								</div>
+							</div>
+							<div class="row">
+								<div class="col">
+									<div class="form-group">
+										<label for="input-text">Text</label>
+										<textarea class="form-control" id="input-text" name="text" rows="2" bind:value={form.text}></textarea>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-lg-6">
+							<div class="row h-100">
+								<div class="col">
+									<div class="form-group h-100 d-flex flex-column">
+										<label for="input-text">Cause</label>
+										<textarea class="form-control flex-fill" id="input-cause" name="cause" rows="2" bind:value={form.cause}></textarea>
+									</div>
+								</div>
+								<div class="col">
+									<div class="form-group">
+										<label for="input-text">Effects</label>
+										<div class="d-grid gap-2">
+											{#each form.effects as effect, index}
+												<div class="input-group">
+													<input type="text" class="form-control" name={`effect[${index}]`} bind:value={effect}>
+													<button class="btn btn-danger" type="button" on:click={() => { form.effects = form.effects.filter((_, i) => i !== index); }}>X</button>
+												</div>
+											{/each}
+											<button type="button" class="btn btn-sm btn-primary" on:click={() => { form.effects = [...form.effects, ""] }}>+ Add</button>
+										</div>
+									</div>
 								</div>
 							</div>
 						</div>
 					</div>
-					<div class="row justify-content-between">
-						<div class="col mb-2">
+					<div class="d-flex justify-content-between mt-2">
+						<div class="flex-grow-1">
 							<div class="d-flex gap-2">
 								<div class="flex-grow-1">
 									<div class="form-group">
@@ -163,7 +169,7 @@
 								</div>
 							</div>
 						</div>
-						<div class="col mb-2">
+						<div class="col">
 							<div class="d-flex justify-content-end align-items-center gap-3">
 								<span id="process-info"></span>
 								<div class="form-group text-end">
