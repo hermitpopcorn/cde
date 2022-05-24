@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/tauri'
 	import { toast } from '@zerodevx/svelte-toast'
+	import { EditIcon, Trash2Icon, CheckSquareIcon } from 'svelte-feather-icons'
 	import { createEventDispatcher } from 'svelte'
 	const dispatch = createEventDispatcher()
 
@@ -200,11 +201,20 @@
 						</p>
 					{/each}
 				</td>
-				<td>{row.cause ? "🈶" : "" }</td>
-				<td>{row.effects?.length > 0 ? "🈶" : "" }</td>
+				<td>
+					{#if row.cause}
+						<CheckSquareIcon class="text-success" />
+					{/if}
+				</td>
+				<td>
+					{#if row.effects?.length > 0}
+						<CheckSquareIcon class="text-success" /><br>
+						({row.effects.length})
+					{/if}
+				</td>
 				<td class="actions">
-					<button class="btn btn-primary btn-sm" on:click={() => edit(row)}>Edit</button>
-					<button class="btn btn-danger btn-sm" on:click={() => remove(row)}>Delete</button>
+					<button class="btn btn-icon btn-primary btn-sm" on:click={() => edit(row)}><EditIcon size="1.2x" /></button>
+					<button class="btn btn-icon btn-danger btn-sm" on:click={() => remove(row)}><Trash2Icon size="1.2x" /></button>
 				</td>
 			</tr>
 		{/each}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/tauri'
 	import { toast } from '@zerodevx/svelte-toast'
+	import { CornerRightDownIcon, LoaderIcon, SaveIcon, PlusIcon, XIcon } from 'svelte-feather-icons'
 	import { createEventDispatcher } from 'svelte'
 	const dispatch = createEventDispatcher()
 	
@@ -143,10 +144,10 @@
 											{#each form.effects as effect, index}
 												<div class="input-group">
 													<input type="text" class="form-control" name={`effect[${index}]`} bind:value={effect}>
-													<button class="btn btn-danger" type="button" on:click={() => { form.effects = form.effects.filter((_, i) => i !== index); }}>X</button>
+													<button class="btn btn-icon btn-danger" type="button" on:click={() => { form.effects = form.effects.filter((_, i) => i !== index); }}><XIcon size="1.2x" /></button>
 												</div>
 											{/each}
-											<button type="button" class="btn btn-sm btn-primary" on:click={() => { form.effects = [...form.effects, ""] }}>+ Add</button>
+											<button type="button" class="btn btn-icon btn-sm btn-primary" on:click={() => { form.effects = [...form.effects, ""] }}><PlusIcon size="1.2x" /></button>
 										</div>
 									</div>
 								</div>
@@ -163,8 +164,8 @@
 								</div>
 								<div class="flex-shrink-1">
 									<div class="form-group">
-										<button type="button" class="btn btn-secondary" id="input-new-id" on:click={() => { clearID() }}>New</button>
-										<button type="button" class="btn btn-secondary" id="input-clear" on:click={() => { clear() }}>Clear</button>
+										<button type="button" class="btn btn-icon btn-secondary" id="input-new-id" on:click={() => { clearID() }}><CornerRightDownIcon size="1.2x" /></button>
+										<button type="button" class="btn btn-icon btn-secondary" id="input-clear" on:click={() => { clear() }}><LoaderIcon size="1.2x" /></button>
 									</div>
 								</div>
 							</div>
@@ -173,7 +174,7 @@
 							<div class="d-flex justify-content-end align-items-center gap-3">
 								<span id="process-info"></span>
 								<div class="form-group text-end">
-									<button class="btn btn-primary" type="button" on:click={() => { save() }}>Save</button>
+									<button class="btn btn-primary" type="button" on:click={() => { save() }}><SaveIcon size="1.2x" /></button>
 								</div>
 							</div>
 						</div>

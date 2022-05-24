@@ -82,6 +82,10 @@
 			margin-bottom: 3em;
 		}
 	}
+
+	:global(.btn-icon svg) {
+		vertical-align: text-bottom;
+	}
 </style>
 
 <SvelteToast options={{ duration: 2000, reversed: true, intro: { y: 192 } }} />
