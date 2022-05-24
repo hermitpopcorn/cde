@@ -163,6 +163,12 @@
 				Text
 				<input type="text" class="form-control" bind:value={filters.text} on:keyup={(e) => { startFilterData(e, "text") }}>
 			</th>
+			<th class="text">
+				Cause
+			</th>
+			<th class="text">
+				Effect
+			</th>
 			<th class="action">
 				Edit
 			</th>
@@ -194,6 +200,8 @@
 						</p>
 					{/each}
 				</td>
+				<td>{row.cause ? "🈶" : "" }</td>
+				<td>{row.effects?.length > 0 ? "🈶" : "" }</td>
 				<td class="actions">
 					<button class="btn btn-primary btn-sm" on:click={() => edit(row)}>Edit</button>
 					<button class="btn btn-danger btn-sm" on:click={() => remove(row)}>Delete</button>
