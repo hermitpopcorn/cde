@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/tauri'
-import { toast } from '@zerodevx/svelte-toast'
-	import { onMount } from 'svelte'
+	import { toast } from '@zerodevx/svelte-toast'
 	import { createEventDispatcher } from 'svelte'
 	const dispatch = createEventDispatcher()
 

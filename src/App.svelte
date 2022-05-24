@@ -58,7 +58,7 @@
 	</section>
 	<hr>
 	<section class="datatable">
-		<Datatable bind:this={datatable} on:edit={(e) => { form.edit(e.detail); animateScroll.scrollToTop() }} />
+		<Datatable bind:this={datatable} on:edit={(e) => { form.edit(e.detail) }} />
 	</section>
 </main>
 
