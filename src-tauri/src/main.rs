@@ -150,6 +150,30 @@ async fn get_all_documents() -> Vec<Document> {
 	return documents;
 }
 
+#[tauri::command]
+async fn star_document(id: Option<&str>) -> tauri::Result<bool> {
+	let db = DB.get().unwrap();
+	let collection = db.collection::<Document>(COLLECTION_NAME);
+
+	let oid: ObjectId = ObjectId::parse_str(id.unwrap()).unwrap();
+	let search = collection.find_one(doc!{ "_id": oid }, None).await.unwrap();
+
+	if search.is_none() {
+		println!("None!");
+		return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Document not found."))));
+	}
+
+	let doc: Document = search.unwrap();
+	let starred: bool = doc.get_bool("starred").unwrap_or(false);
+
+	let setdoc = if !starred { doc!{ "$set": doc!{ "starred": true } } } else { doc!{ "$unset": doc!{ "starred": false } } };
+	let result = collection.find_one_and_update(doc!{ "_id": oid, }, setdoc, None).await;
+	if result.is_err() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Update error.")))); }
+	if result.unwrap().is_none() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Did not update any data. Maybe data does not exist in database?")))); }
+	
+	return Ok(!starred);
+}
+
 #[tokio::main]
 async fn main() {
 	tauri::Builder::default()
@@ -158,6 +182,7 @@ async fn main() {
 			get_all_documents,
 			save_document,
 			remove_document,
+			star_document,
 		])
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/tauri'
 	import { toast } from '@zerodevx/svelte-toast'
-	import { EditIcon, Trash2Icon, CheckSquareIcon } from 'svelte-feather-icons'
+	import { EditIcon, Trash2Icon, CheckSquareIcon, StarIcon } from 'svelte-feather-icons'
 	import { createEventDispatcher } from 'svelte'
 	const dispatch = createEventDispatcher()
 
@@ -107,16 +107,27 @@
 		return array
 	}
 
-	const edit = (row) => {
+	const edit = (index) => {
+		let row = rows[index]
 		dispatch('edit', row)
 	}
 
-	const remove = async (row) => {
+	const remove = async (index) => {
+		let row = rows[index]
 		let c = await window.confirm("Are you sure?")
 		if (c) {
 			await invoke("remove_document", { id: row._id.$oid })
 			toast.push("Data has been deleted.", { theme: { '--toastBackground': 'green' } })
 			fetchData()
+		}
+	}
+
+	const star = async (index) => {
+		let c: boolean = await invoke("star_document", { id: rows[index]._id.$oid })
+		if (c) {
+			rows[index].starred = true
+		} else {
+			rows[index].starred = false
 		}
 	}
 </script>
@@ -214,8 +225,9 @@
 					{/if}
 				</td>
 				<td class="actions">
-					<button class="btn btn-icon btn-primary btn-sm" on:click={() => edit(row)}><EditIcon size="1.2x" /></button>
-					<button class="btn btn-icon btn-danger btn-sm" on:click={() => remove(row)}><Trash2Icon size="1.2x" /></button>
+					<button class="btn btn-icon btn-primary btn-sm" on:click={() => edit(index)}><EditIcon size="1.2x" /></button>
+					<button class="btn btn-icon btn-danger btn-sm" on:click={() => remove(index)}><Trash2Icon size="1.2x" /></button>
+					<button class="btn btn-icon btn-dark btn-sm" class:btn-warning={ "starred" in row } class:btn-dark={ !("starred" in row) || row.starred == false } on:click={() => star(index)}><StarIcon size="1.2x" /></button>
 				</td>
 			</tr>
 		{/each}
