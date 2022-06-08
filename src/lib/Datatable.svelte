@@ -2,6 +2,7 @@
 	import { invoke } from '@tauri-apps/api/tauri'
 	import { toast } from '@zerodevx/svelte-toast'
 	import { EditIcon, Trash2Icon, CheckSquareIcon, StarIcon } from 'svelte-feather-icons'
+	import { onMount } from 'svelte'
 	import { createEventDispatcher } from 'svelte'
 	const dispatch = createEventDispatcher()
 
@@ -130,6 +131,12 @@
 			rows[index].starred = false
 		}
 	}
+
+	onMount(() => {
+		if (data.length < 1) {
+			fetchData()
+		}
+	})
 </script>
 
 <div class="row g-3 align-items-center px-4 justify-content-end">

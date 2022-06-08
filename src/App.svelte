@@ -37,6 +37,9 @@
 		}
 	}
 
+	// Variables
+	let stickyForm = false
+
 	onMount(() => { dbConnect() })
 </script>
 
@@ -53,8 +56,8 @@
 			</div>
 		</section>
 	{/if}
-	<section class="form sticky-top">
-		<Form bind:this={form} on:save={() => { datatable.fetchData() }} />
+	<section class={stickyForm ? "form sticky-top" : "form"}>
+		<Form bind:this={form} on:save={() => { datatable.fetchData() }} on:toggle-sticky={() => { stickyForm = !stickyForm }} sticky={stickyForm} />
 	</section>
 	<hr>
 	<section class="datatable">

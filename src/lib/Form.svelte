@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/tauri'
 	import { toast } from '@zerodevx/svelte-toast'
-	import { CornerRightDownIcon, LoaderIcon, SaveIcon, PlusIcon, XIcon } from 'svelte-feather-icons'
+	import { CornerRightDownIcon, LoaderIcon, SaveIcon, PlusIcon, XIcon, AnchorIcon } from 'svelte-feather-icons'
 	import { createEventDispatcher } from 'svelte'
 	const dispatch = createEventDispatcher()
 	
 	let form
+	export let sticky = false
 
 	const save = async () => {
 		const texts = form.text.split("\n")
@@ -76,6 +77,10 @@
 		if (kbdE.ctrlKey && kbdE.key === "d") {
 			return clearID()
 		}
+	}
+
+	const toggleSticky = () => {
+		dispatch('toggle-sticky')
 	}
 
 	clear()
@@ -174,6 +179,7 @@
 							<div class="d-flex justify-content-end align-items-center gap-3">
 								<span id="process-info"></span>
 								<div class="form-group text-end">
+									<button class={sticky ? "btn btn-primary" : "btn"} type="button" on:click={() => { toggleSticky() }}><AnchorIcon size="1.2x" /></button>
 									<button class="btn btn-primary" type="button" on:click={() => { save() }}><SaveIcon size="1.2x" /></button>
 								</div>
 							</div>
