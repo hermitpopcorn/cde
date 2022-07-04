@@ -152,7 +152,7 @@
 													<button class="btn btn-icon btn-danger" type="button" on:click={() => { form.effects = form.effects.filter((_, i) => i !== index); }}><XIcon size="1.2x" /></button>
 												</div>
 											{/each}
-											<button type="button" class="btn btn-icon btn-sm btn-primary" on:click={() => { form.effects = [...form.effects, ""] }}><PlusIcon size="1.2x" /></button>
+											<button title="Add new effect" type="button" class="btn btn-icon btn-sm btn-primary" on:click={() => { form.effects = [...form.effects, ""] }}><PlusIcon size="1.2x" /></button>
 										</div>
 									</div>
 								</div>
@@ -169,8 +169,8 @@
 								</div>
 								<div class="flex-shrink-1">
 									<div class="form-group">
-										<button type="button" class="btn btn-icon btn-secondary" id="input-new-id" on:click={() => { clearID() }}><CornerRightDownIcon size="1.2x" /></button>
-										<button type="button" class="btn btn-icon btn-secondary" id="input-clear" on:click={() => { clear() }}><LoaderIcon size="1.2x" /></button>
+										<button title="Clear ID for saving as new" type="button" class="btn btn-icon btn-secondary" id="input-new-id" on:click={() => { clearID() }}><CornerRightDownIcon size="1.2x" /></button>
+										<button title="Clear all input" type="button" class="btn btn-icon btn-danger" id="input-clear" on:click={() => { clear() }}><LoaderIcon size="1.2x" /></button>
 									</div>
 								</div>
 							</div>
@@ -179,8 +179,8 @@
 							<div class="d-flex justify-content-end align-items-center gap-3">
 								<span id="process-info"></span>
 								<div class="form-group text-end">
-									<button class={sticky ? "btn btn-primary" : "btn"} type="button" on:click={() => { toggleSticky() }}><AnchorIcon size="1.2x" /></button>
-									<button class="btn btn-primary" type="button" on:click={() => { save() }}><SaveIcon size="1.2x" /></button>
+									<button title="Make the form sticky to top of the page" class={sticky ? "btn btn-primary" : "btn"} type="button" on:click={() => { toggleSticky() }}><AnchorIcon size="1.2x" /></button>
+									<button title="Save" class="btn btn-primary" type="button" on:click={() => { save() }}><SaveIcon size="1.2x" /></button>
 								</div>
 							</div>
 						</div>

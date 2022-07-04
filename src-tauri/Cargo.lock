@@ -74,6 +74,7 @@ dependencies = [
  "maplit",
  "mongodb",
  "once_cell",
+ "regex",
  "serde",
  "serde_json",
  "tauri",

@@ -6,7 +6,7 @@
 const DATABASE_NAME: &str = "datent";
 const COLLECTION_NAME: &str = "kasane";
 
-use mongodb::{bson::{doc, Document}, options::{ClientOptions}, Client, Database};
+use mongodb::{bson::{doc, Document}, options::{ClientOptions, FindOptions}, Client, Database};
 use once_cell::sync::OnceCell;
 use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::{anyhow, Error};
@@ -28,7 +28,7 @@ async fn db_connect() -> tauri::Result<bool> {
 			return Ok(true);
 		},
 		Err(msg) => {
-			println!("{}", msg);
+			eprintln!("{}", msg);
 			return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Could not connect to Database."))));
 		},
 	}
@@ -41,13 +41,9 @@ async fn connect_client() -> Result<Client, Error> {
 
 	// attempt connection
 	match client.database("admin").run_command(doc! {"ping": 1}, None).await {
-		Ok(_) => {
-			return Ok(client);
-		},
-		_ => {
-			return Err(anyhow!("Could not connect to database."));
-		}
-	};
+		Ok(_) => Ok(client),
+		_ => Err(anyhow!("Could not connect to database.")),
+	}
 }
 
 #[tauri::command]
@@ -58,9 +54,9 @@ async fn save_document(
 ) -> tauri::Result<()> {
 	// generate timestamp
 	let start = SystemTime::now();
-	let since_the_epoch = start.duration_since(UNIX_EPOCH).unwrap();
+	let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("duration since the epoch");
 
-	let db = DB.get().unwrap();
+	let db = DB.get().expect("db connection");
 	let collection = db.collection::<Document>(COLLECTION_NAME);
 	
 	let mut doc: Document;
@@ -109,7 +105,6 @@ async fn save_document(
 		// insert operation
 		let result = collection.insert_one(doc, None).await;
 		if result.is_err() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Insert error.")))); }
-		return Ok(());
 	} else {
 		// update operation
 		// create container document
@@ -117,49 +112,99 @@ async fn save_document(
 		if doc.len() > 0 { setdoc.insert("$set", doc); }
 		if undoc.len() > 0 { setdoc.insert("$unset", undoc); }
 
-		let result = collection.find_one_and_update(doc!{ "_id": ObjectId::parse_str(id.unwrap()).unwrap(), }, setdoc, None).await;
+		let result = collection.find_one_and_update(doc!{ "_id": ObjectId::parse_str(id.unwrap()).expect("valid oid"), }, setdoc, None).await;
 		if result.is_err() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Update error.")))); }
 		if result.unwrap().is_none() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Did not update any data. Maybe ID is specified despite not existing in database?")))); }
-		return Ok(());
 	}
+
+	Ok(())
 }
 
 #[tauri::command]
 async fn remove_document(id: Option<&str>) -> tauri::Result<()> {
-	let db = DB.get().unwrap();
+	let db = DB.get().expect("db connection");
 	let collection = db.collection::<Document>(COLLECTION_NAME);
 
 	let oid: ObjectId = ObjectId::parse_str(id.unwrap()).unwrap();
 	let result = collection.delete_one(doc!{ "_id": oid }, None).await;
 	if result.is_err() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Delete error.")))); }
-	return Ok(());
+	Ok(())
 }
 
 #[tauri::command]
-async fn get_all_documents() -> Vec<Document> {
-	if DB.get().is_none() { return vec![]; }
+async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std::collections::HashMap<String, String>>) -> (Vec<Document>, u64, u64) {
+	if DB.get().is_none() { return (vec![], 1, 0); }
 
-	let db = DB.get().unwrap();
+	let db = DB.get().expect("db connection");
 	let collection = db.collection::<Document>(COLLECTION_NAME);
 
+	// construct search criteria document
+	let mut search: Option<Document> = None;
+	if !filters.is_none() {
+		let mut filter_docs: Vec<Document> = vec![];
+		for (key, value) in filters.unwrap().into_iter() {
+			if value.len() < 1 { continue; }
+
+			match key.as_str() {
+				"volume" => {
+					// match exactly
+					filter_docs.push(doc!{ key: value });
+				},
+				"page" => {
+					// get if starting matches
+					filter_docs.push(doc!{ key: bson::Regex{ pattern: "^".to_owned() + regex::escape(&value).as_str(), options: String::from("i") } });
+				},
+				"type" => {
+					// match exactly
+					filter_docs.push(doc!{ key: value });
+				},
+				"note" => {
+					// get if contains
+					filter_docs.push(doc!{ key: bson::Regex{ pattern: regex::escape(&value), options: String::from("im") } });
+				},
+				"text" => {
+					// get if contains in tsa or tsu
+					filter_docs.push(doc!{ "$or": [doc!{ "tsa": bson::Regex{ pattern: regex::escape(&value), options: String::from("im") } }, doc!{ "tsu": bson::Regex{ pattern: regex::escape(&value), options: String::from("im") } }] });
+				},
+				default => {
+					eprintln!("found unknown filter key {}", default);
+				},
+			}
+		}
+
+		if filter_docs.len() > 0 {
+			search = Some(doc!{ "$and": filter_docs });
+		}
+	}
+
+	let mut page: u64 = page.unwrap_or(1);
+	let size: u64 = size.unwrap_or(20);
+	
+	let total_filtered_count: u64 = collection.count_documents(search.clone(), None).await.expect("filtered document count");
+	let mut skip: u64 = (page - 1) * size;
+	while skip > total_filtered_count {
+		page -= 1;
+		skip = (page - 1) * size;
+	}
+
 	let mut documents: Vec<Document> = vec![];
-	let mut cursor = collection.find(None, None).await.unwrap();
+	let mut cursor = collection.find(search, FindOptions::builder().skip(skip).limit(size as i64).build()).await.unwrap();
 	while cursor.advance().await.unwrap() {
 		documents.push(cursor.deserialize_current().unwrap());
 	}
-	return documents;
+
+	(documents, page, total_filtered_count)
 }
 
 #[tauri::command]
-async fn star_document(id: Option<&str>) -> tauri::Result<bool> {
-	let db = DB.get().unwrap();
+async fn star_document(id: &str) -> tauri::Result<bool> {
+	let db = DB.get().expect("db connection");
 	let collection = db.collection::<Document>(COLLECTION_NAME);
 
-	let oid: ObjectId = ObjectId::parse_str(id.unwrap()).unwrap();
+	let oid: ObjectId = ObjectId::parse_str(id).expect("valid oid");
 	let search = collection.find_one(doc!{ "_id": oid }, None).await.unwrap();
 
 	if search.is_none() {
-		println!("None!");
 		return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Document not found."))));
 	}
 
@@ -171,7 +216,7 @@ async fn star_document(id: Option<&str>) -> tauri::Result<bool> {
 	if result.is_err() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Update error.")))); }
 	if result.unwrap().is_none() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Did not update any data. Maybe data does not exist in database?")))); }
 	
-	return Ok(!starred);
+	Ok(!starred)
 }
 
 #[tokio::main]
@@ -179,7 +224,7 @@ async fn main() {
 	tauri::Builder::default()
 		.invoke_handler(tauri::generate_handler![
 			db_connect,
-			get_all_documents,
+			get_documents,
 			save_document,
 			remove_document,
 			star_document,

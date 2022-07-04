@@ -8,6 +8,7 @@
 
 	let data = []
 	let pageSize = 20
+	let dataCount = 0
 	let currentPage = 1
 	let filters = {
 		volume: "",
@@ -17,71 +18,38 @@
 		text: "",
 	}
 	let appliedFilters = { ... filters }
-	let filteredData = []
 
-	$: rows = filteredData.slice((currentPage -1) * pageSize, currentPage * pageSize)
-	$: currentPage = Math.min(Math.max(Math.ceil(filteredData.length / pageSize), 1), currentPage)
-
+	// refresh the data by requesting it anew
 	export const fetchData = async () => {
-		data = await invoke('get_all_documents')
-		let index = 1
-		for (let i in data) {
-			data[i].index = index++
-		}
-		filterData()
+		let fetchResult = await invoke("get_documents", { page: currentPage, size: pageSize, filters: filters })
+		data = fetchResult[0]
+		currentPage = fetchResult[1]
+		dataCount = fetchResult[2]
 	}
 
-	const setPage = (to: number) => {
-		if (to < 1 || to > Math.ceil(filteredData.length / pageSize)) { return }
+	// change page and request data
+	const setPage = async (to: number) => {
+		if (to < 1 || to > Math.ceil(dataCount / pageSize)) { return }
 		currentPage = to
+		await fetchData()
 	}
 
+	// filter data after a set timeout
 	let timeout: NodeJS.Timeout
 	const startFilterData = (event: Event & { currentTarget: EventTarget }, property: string) => {
+		// if filters are exactly the same as the one active right now, do not request data
 		if (filters[property] === appliedFilters[property]) { return }
+		
+		// wait until user stops typing before requesting data
 		clearTimeout(timeout)
 		timeout = setTimeout(filterData, KeyboardEvent.prototype.isPrototypeOf(event) ? 500 : 10)
 	}
-	const filterData = () => {
-		filteredData = []
-		
-		let activeFilters = []
-		for (let property of Object.keys(filters)) {
-			if (filters[property].length < 1) { continue }
-			activeFilters.push(property)
-		}
-
-		if (activeFilters.length < 1) {
-			filteredData = data
-			return
-		}
-
-		let filteredDataPerProperty = []
-		for (let property of activeFilters) {
-			filteredDataPerProperty[property] = [...filteredData, ...data.filter((element) => {
-				let filter = (filters[property] as string).toLowerCase()
-
-				if (property === "text") {
-					return (element['tsu'] as string ?? "").toLowerCase().includes(filter) || (element['tsa'] as string ?? "").toLowerCase().includes(filter)
-				}
-				
-				let check: string = String(element[property] ?? "").toLowerCase()
-				return check.includes(filter)
-			})]
-		}
-
-		filteredData = data.filter((item) => {
-			for (let p of Object.keys(filteredDataPerProperty)) {
-				if (!filteredDataPerProperty[p].includes(item)) {
-					return false
-				}
-			}
-			return true
-		})
-
+	const filterData = async () => {
+		await fetchData()
 		appliedFilters = { ... filters }
 	}
 
+	// format data text (string manipulation)
 	const formatDataText = (tsu, tsa) => {
 		const makeTextObject = (string) => {
 			const isInBrackets = (str: string): boolean => str.startsWith('[') && str.endsWith(']')
@@ -109,12 +77,12 @@
 	}
 
 	const edit = (index) => {
-		let row = rows[index]
+		let row = data[index]
 		dispatch('edit', row)
 	}
 
 	const remove = async (index) => {
-		let row = rows[index]
+		let row = data[index]
 		let c = await window.confirm("Are you sure?")
 		if (c) {
 			await invoke("remove_document", { id: row._id.$oid })
@@ -124,14 +92,13 @@
 	}
 
 	const star = async (index) => {
-		let c: boolean = await invoke("star_document", { id: rows[index]._id.$oid })
+		let c: boolean = await invoke("star_document", { id: data[index]._id.$oid })
 		if (c) {
-			rows[index].starred = true
+			data[index].starred = true
 		} else {
-			rows[index].starred = false
+			data[index].starred = false
 		}
 	}
-
 	onMount(() => {
 		if (data.length < 1) {
 			fetchData()
@@ -195,13 +162,11 @@
 		</tr>
 	</thead>
 	<tbody>
-	{#if rows}
-		{#each rows as row, index}
+	{#if data}
+		{#each data as row, index}
 			<tr class={{'penambahan': 'amplification', 'pengurangan': 'reduction'}[row.type]}>
 				<td class="numbering">
 					{((currentPage - 1) * pageSize) + (index + 1)}
-					<br>
-					<span class="id">ID{row.index}</span>
 				</td>
 				<td>{row.volume ?? ""}</td>
 				<td>{row.page ?? ""}</td>
@@ -250,7 +215,7 @@
 					<span aria-hidden="true">&laquo;</span>
 				</button>
 			</li>
-			{#each {length: Math.ceil(filteredData.length / pageSize)} as _, i}
+			{#each {length: Math.ceil(dataCount / pageSize)} as _, i}
 			<li class={i+1 === currentPage ? "page-item active" : "page-item"}>
 				<button class="page-link" on:click={() => { setPage(i+1) }}>{i + 1}</button>
 			</li>
@@ -294,9 +259,6 @@
 	tr {
 		&.amplification { background: #e7f1ff; }
 		&.reduction { background: #fde9e9; }
-	}
-	td.numbering span.id {
-		font-size: 0.7em;
 	}
 	td.actions button {
 		margin: 0.1em;
