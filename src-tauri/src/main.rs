@@ -6,7 +6,7 @@
 const DATABASE_NAME: &str = "datent";
 const COLLECTION_NAME: &str = "kasane";
 
-use mongodb::{bson::{doc, Document}, options::{ClientOptions, FindOptions}, Client, Database};
+use mongodb::{bson::{doc, Document}, options::{ClientOptions, FindOptions, Collation}, Client, Database};
 use once_cell::sync::OnceCell;
 use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::{anyhow, Error};
@@ -187,8 +187,11 @@ async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std
 		skip = (page - 1) * size;
 	}
 
+	let sort = doc!{ "volume": 1, "page": 1, "created": 1 };
+	let collation = Collation::builder().locale("en_US").numeric_ordering(true).build();
+
 	let mut documents: Vec<Document> = vec![];
-	let mut cursor = collection.find(search, FindOptions::builder().skip(skip).limit(size as i64).build()).await.unwrap();
+	let mut cursor = collection.find(search, FindOptions::builder().sort(sort).collation(collation).skip(skip).limit(size as i64).build()).await.unwrap();
 	while cursor.advance().await.unwrap() {
 		documents.push(cursor.deserialize_current().unwrap());
 	}

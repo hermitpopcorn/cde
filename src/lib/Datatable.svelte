@@ -19,6 +19,8 @@
 	}
 	let appliedFilters = { ... filters }
 
+	$: { pageSize, fetchData() }
+
 	// refresh the data by requesting it anew
 	export const fetchData = async () => {
 		let fetchResult = await invoke("get_documents", { page: currentPage, size: pageSize, filters: filters })
@@ -280,6 +282,7 @@
 	}
 	ul.pagination {
 		display: inline-flex;
+		flex-wrap: wrap;
 		margin: 0;
 	}
 </style>
