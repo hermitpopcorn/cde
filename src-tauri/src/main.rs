@@ -159,8 +159,17 @@ async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std
 					filter_docs.push(doc!{ key: value });
 				},
 				"note" => {
-					// get if contains
-					filter_docs.push(doc!{ key: bson::Regex{ pattern: regex::escape(&value), options: String::from("im") } });
+					// get if contains OR doesn't contain
+					match &value.starts_with("-") {
+						false => {
+							filter_docs.push(doc!{ key: bson::Regex{ pattern: regex::escape(&value), options: String::from("im") } });
+						},
+						true => {
+							let mut new_value = String::from(&value);
+							new_value.remove(0);
+							filter_docs.push(doc!{ key: doc!{ "$not": bson::Regex{ pattern: regex::escape(&new_value), options: String::from("im") } } });
+						},
+					}
 				},
 				"text" => {
 					// get if contains in tsa or tsu
