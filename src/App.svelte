@@ -65,7 +65,7 @@
 	</section>
 </main>
 
-<style type="text/scss">
+<style lang="scss">
 	:root {
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
 			Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;

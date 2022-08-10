@@ -238,7 +238,7 @@
 	</nav>
 </section>
 
-<style type="text/scss">
+<style lang="scss">
 	th, td {
 		text-align: center;
 	}
