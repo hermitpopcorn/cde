@@ -19,11 +19,11 @@
 				tsu: tsu,
 				tsa: tsa,
 				theType: form.type,
-				note: form.note.length > 0 ? form.note : null,
-				volume: form.volume.length > 0 ? form.volume : null,
-				page: form.page.length > 0 ? form.page : null,
-				cause: form.cause.length > 0 ? form.cause : null,
-				effects: form.effects.filter((i) => i.length > 0),
+				note: form.note.length > 0 ? form.note.trim() : null,
+				volume: form.volume.length > 0 ? form.volume.trim() : null,
+				page: form.page.length > 0 ? form.page.trim() : null,
+				cause: form.cause.length > 0 ? form.cause.trim() : null,
+				effects: form.effects.filter(i => i.length > 0).map(i => i.trim()),
 			})
 			toast.push("Data saved successfully.", { theme: { '--toastBackground': 'green' } })
 			dispatch('save')
