@@ -2,20 +2,23 @@
 	import { invoke } from '@tauri-apps/api/tauri'
 	import { onMount } from 'svelte'
 	import { SvelteToast, toast } from '@zerodevx/svelte-toast'
-	import * as animateScroll from "svelte-scrollto"
-	import Datatable from './lib/Datatable.svelte'
-	import Form from './lib/Form.svelte'
+	import Router, { replace } from 'svelte-spa-router'
+	import { listen } from '@tauri-apps/api/event'
+	import Data from './pages/Data.svelte'
+	import Statistics from './pages/Statistics.svelte'
+	import { refreshDatatable } from './lib/EventBus'
+	
+	// Custom types
+	type ChangePagePayload = {
+		page: string,
+	}
 
-	// Component binding
-	let form
-	let datatable
-
-	// ScrollTo
-	animateScroll.setGlobalOptions({
-		offset: 0,
-		delay: 0,
-		duration: 100,
-	})
+	// Routes
+	const routes = {
+		'/': Data, // Default route
+		'/data': Data,
+		'/statistics': Statistics,
+	}
 
 	// Database
 	let dbConnected = false
@@ -23,12 +26,12 @@
 	const dbConnect = async () => {
 		dbConnecting = true
 		try {
-			let connect: boolean = await invoke("db_connect")
+			let connect: boolean = await invoke('db_connect')
 			dbConnecting = false
 			dbConnected = true
 			if (connect) {
 				toast.push("Successfully connected to database.", { theme: { '--toastBackground': 'green' } })
-				datatable.fetchData()
+				refreshDatatable.update(n => n + 1)
 			}
 		} catch(e) {
 			dbConnecting = false
@@ -37,13 +40,19 @@
 		}
 	}
 
-	// Variables
-	let stickyForm = false
+	// Remove preloader and connect to DB
+	onMount(() => {
+		document.getElementById('app-preloader')?.remove()
+		dbConnect()
+	})
 
-	onMount(() => { dbConnect() })
+	// Listen to Tauri events
+	listen('change_page', (event) => {
+		replace(`/${(<ChangePagePayload>event.payload).page}`)
+	})
 </script>
 
-<main>
+<section>
 	{#if !dbConnected}
 		<section class="connection">
 			<div class="container">
@@ -56,14 +65,11 @@
 			</div>
 		</section>
 	{/if}
-	<section class={stickyForm ? "form sticky-top" : "form"}>
-		<Form bind:this={form} on:save={() => { datatable.fetchData() }} on:toggle-sticky={() => { stickyForm = !stickyForm }} sticky={stickyForm} />
-	</section>
-	<hr>
-	<section class="datatable">
-		<Datatable bind:this={datatable} on:edit={(e) => { form.edit(e.detail) }} />
-	</section>
-</main>
+
+	<Router {routes} />
+
+	<SvelteToast options={{ duration: 2000, reversed: true, intro: { y: 192 } }} />
+</section>
 
 <style lang="scss">
 	:root {
@@ -75,20 +81,12 @@
 		--toastContainerLeft: calc(50vw - 8rem);
 	}
 
-	section {
-		&.connection {
-			background-color: rgba(255, 173, 173, 0.7);
-			vertical-align: middle;
-		}
-		&.datatable {
-			min-height: 4em;
-			margin-bottom: 3em;
-		}
-	}
-
 	:global(.btn-icon svg) {
 		vertical-align: text-bottom;
 	}
-</style>
 
-<SvelteToast options={{ duration: 2000, reversed: true, intro: { y: 192 } }} />
+	section.connection {
+		background-color: rgba(255, 173, 173, 0.7);
+		vertical-align: middle;
+	}
+</style>

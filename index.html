@@ -6,6 +6,30 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	</head>
 	<body>
+		<div id="app-preloader" style="font-family: sans-serif">
+			<div style="display: flex; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); justify-content: center; justify-items: center; flex-direction: column; width: 100%; background: white; z-index: 99; padding: 1em">
+				<div style="text-align: center">
+					<label for="preloader-bar">Loading...</label>
+				</div>
+				<div style="text-align: center">
+					<progress id="preloader-bar" value="1" max="10000"></progress>
+				</div>
+			</div>
+			<script>
+				let progress = setInterval(() => {
+					if (!document.getElementById('app-preloader')) {
+						return clearInterval(progress)
+					}
+					let bar = document.getElementById('preloader-bar')
+					let current = Number(bar.getAttribute('value'))
+					if (current >= (Number(bar.getAttribute('max')) * 95/100)) {
+						return clearInterval(progress)
+					}
+					let increase = Math.round(Math.random() * 100)
+					bar.setAttribute('value', current + increase)
+				}, 10)
+			</script>
+		</div>
 		<div id="app"></div>
 		<script type="module" src="/src/main.ts"></script>
 	</body>

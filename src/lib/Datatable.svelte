@@ -211,23 +211,25 @@
 
 <section class="pagination-container fixed-bottom">
 	<nav aria-label="Datatable pagination">
-		<ul class="pagination justify-content-center">
-			<li class="page-item">
-				<button class="page-link" aria-label="Previous" on:click={() => { setPage(currentPage - 1) }}>
-					<span aria-hidden="true">&laquo;</span>
-				</button>
-			</li>
-			{#each {length: Math.ceil(dataCount / pageSize)} as _, i}
-			<li class={i+1 === currentPage ? "page-item active" : "page-item"}>
-				<button class="page-link" on:click={() => { setPage(i+1) }}>{i + 1}</button>
-			</li>
-			{/each}
-			<li class="page-item">
-				<button class="page-link" aria-label="Next" on:click={() => { setPage(currentPage + 1) }}>
-					<span aria-hidden="true">&raquo;</span>
-				</button>
-			</li>
-		</ul>
+		<div class="d-inline">
+			<ul class="pagination justify-content-center">
+				<li class="page-item">
+					<button class="page-link" aria-label="Previous" on:click={() => { setPage(currentPage - 1) }}>
+						<span aria-hidden="true">&laquo;</span>
+					</button>
+				</li>
+				{#each {length: Math.ceil(dataCount / pageSize)} as _, i}
+				<li class={i+1 === currentPage ? "page-item active" : "page-item"}>
+					<button class="page-link" on:click={() => { setPage(i+1) }}>{i + 1}</button>
+				</li>
+				{/each}
+				<li class="page-item">
+					<button class="page-link" aria-label="Next" on:click={() => { setPage(currentPage + 1) }}>
+						<span aria-hidden="true">&raquo;</span>
+					</button>
+				</li>
+			</ul>
+		</div>
 		<ul class="pagination justify-content-center">
 			<li class="page-item active">
 				<button class="page-link" aria-label="Refresh" on:click={() => { fetchData() }}>

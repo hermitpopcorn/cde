@@ -6,6 +6,7 @@
 const DATABASE_NAME: &str = "datent";
 const COLLECTION_NAME: &str = "kasane";
 
+use tauri::{CustomMenuItem, Menu};
 use mongodb::{bson::{doc, Document}, options::{ClientOptions, FindOptions, Collation}, Client, Database};
 use once_cell::sync::OnceCell;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -14,6 +15,12 @@ use bson::oid::ObjectId;
 use maplit::hashmap;
 
 static DB: OnceCell<Database> = OnceCell::new();
+
+
+#[derive(Clone, serde::Serialize)]
+struct ChangePagePayload {
+	page: String,
+}
 
 #[tauri::command]
 async fn db_connect() -> tauri::Result<bool> {
@@ -233,6 +240,11 @@ async fn star_document(id: &str) -> tauri::Result<bool> {
 
 #[tokio::main]
 async fn main() {
+	let menu = Menu::new()
+		.add_item(CustomMenuItem::new("show_page_data", "Data"))
+		.add_item(CustomMenuItem::new("show_page_statistics", "Statistics"))
+	;
+
 	tauri::Builder::default()
 		.invoke_handler(tauri::generate_handler![
 			db_connect,
@@ -241,6 +253,13 @@ async fn main() {
 			remove_document,
 			star_document,
 		])
+		.menu(menu).on_menu_event(|event| {
+			match event.menu_item_id() {
+				"show_page_data" => event.window().emit("change_page", ChangePagePayload { page: "data".into() }).expect("emit change page event"),
+				"show_page_statistics" => event.window().emit("change_page", ChangePagePayload { page: "statistics".into() }).expect("emit change page event"),
+				_ => {},
+			}
+		})
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");
 }
