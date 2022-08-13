@@ -1,19 +1,11 @@
 <script lang="ts">
-	import * as animateScroll from 'svelte-scrollto'
 	import Datatable from '../lib/Datatable.svelte'
 	import Form from '../lib/Form.svelte'
 	import { refreshDatatable } from '../lib/EventBus'
 
 	// Component binding
 	let form
-	let datatable
-
-	// ScrollTo
-	animateScroll.setGlobalOptions({
-		offset: 0,
-		delay: 0,
-		duration: 100,
-	})
+	let datatable	
 
 	// Variables
 	let stickyForm = false

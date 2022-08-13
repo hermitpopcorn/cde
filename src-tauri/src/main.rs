@@ -6,7 +6,7 @@
 const DATABASE_NAME: &str = "datent";
 const COLLECTION_NAME: &str = "kasane";
 
-use tauri::{CustomMenuItem, Menu};
+use tauri::{CustomMenuItem, Menu, WindowMenuEvent};
 use mongodb::{bson::{doc, Document}, options::{ClientOptions, FindOptions, Collation}, Client, Database};
 use once_cell::sync::OnceCell;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -47,7 +47,7 @@ async fn connect_client() -> Result<Client, Error> {
 	let client = Client::with_options(client_options)?;
 
 	// attempt connection
-	match client.database("admin").run_command(doc! {"ping": 1}, None).await {
+	match client.database("admin").run_command(doc!{"ping": 1}, None).await {
 		Ok(_) => Ok(client),
 		_ => Err(anyhow!("Could not connect to database.")),
 	}
@@ -238,12 +238,69 @@ async fn star_document(id: &str) -> tauri::Result<bool> {
 	Ok(!starred)
 }
 
+#[derive(serde::Serialize)]
+struct AggregateCount {
+	columns: Vec<(String, String)>,
+	quantity: u32,
+}
+
+#[tauri::command]
+async fn get_count_by_columns(columns: Vec<&str>) -> tauri::Result<Vec<AggregateCount>> {
+	if DB.get().is_none() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Not connected to database.")))); }
+
+	let db = DB.get().expect("db connection");
+	let collection = db.collection::<Document>(COLLECTION_NAME);
+
+	let mut documents: Vec<AggregateCount> = vec![];
+	let mut id: Document = doc!{};
+	for (_index, column) in columns.iter().enumerate() {
+		let mut dollared = String::from("$"); dollared.push_str(column);
+		id.insert(column.to_owned(), dollared);
+	}
+	let mut cursor = collection.aggregate([
+		doc!{
+			"$group": doc!{
+				"_id": id,
+				"quantity": doc!{
+					"$sum": 1 as i32,
+				},
+			},
+		},
+		doc!{
+			"$sort": doc!{
+				"quantity": -1 as i32,
+			},
+		},
+	], None).await.expect("count by column cursor");
+	while cursor.advance().await.unwrap() {
+		let row: Document = cursor.deserialize_current().expect("count by column data");
+		let mut columns: Vec<(String, String)> = vec![];
+		let id = row.get_document("_id").expect("count by column id");
+		for (_index, (key, value)) in id.iter().enumerate() {
+			let column_key = key.clone();
+			let column_value = value.as_str().expect("count by column id value as str").to_owned();
+			columns.push((column_key, column_value));
+		}
+		let quantity: u32 = row.get_i32("quantity").expect("count by column quantity").try_into().expect("count by column quantity as u32");
+		documents.push(AggregateCount { columns, quantity });
+	}
+
+	Ok(documents)
+}
+
 #[tokio::main]
 async fn main() {
 	let menu = Menu::new()
 		.add_item(CustomMenuItem::new("show_page_data", "Data"))
 		.add_item(CustomMenuItem::new("show_page_statistics", "Statistics"))
 	;
+	fn handle_menu_event(event: WindowMenuEvent) {
+		match event.menu_item_id() {
+			"show_page_data" => event.window().emit("change_page", ChangePagePayload { page: "data".into() }).expect("emit change page event"),
+			"show_page_statistics" => event.window().emit("change_page", ChangePagePayload { page: "statistics".into() }).expect("emit change page event"),
+			_ => {},
+		}
+	}
 
 	tauri::Builder::default()
 		.invoke_handler(tauri::generate_handler![
@@ -252,14 +309,9 @@ async fn main() {
 			save_document,
 			remove_document,
 			star_document,
+			get_count_by_columns,
 		])
-		.menu(menu).on_menu_event(|event| {
-			match event.menu_item_id() {
-				"show_page_data" => event.window().emit("change_page", ChangePagePayload { page: "data".into() }).expect("emit change page event"),
-				"show_page_statistics" => event.window().emit("change_page", ChangePagePayload { page: "statistics".into() }).expect("emit change page event"),
-				_ => {},
-			}
-		})
+		.menu(menu).on_menu_event(handle_menu_event)
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");
 }

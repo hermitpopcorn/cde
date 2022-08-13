@@ -2,9 +2,13 @@
 	import { invoke } from '@tauri-apps/api/tauri'
 	import { toast } from '@zerodevx/svelte-toast'
 	import { EditIcon, Trash2Icon, CheckSquareIcon, StarIcon } from 'svelte-feather-icons'
-	import { onMount } from 'svelte'
+	import { onMount, onDestroy } from 'svelte'
+	import { querystring } from 'svelte-spa-router'
 	import { createEventDispatcher } from 'svelte'
+
 	const dispatch = createEventDispatcher()
+
+	let thead
 
 	let data = []
 	let pageSize = 20
@@ -106,6 +110,26 @@
 			fetchData()
 		}
 	})
+
+	const qsUnsubscriber = querystring.subscribe(qs => {
+		let filtered = false
+
+		const pairs = qs.split('&')
+		for (let i = 0; i < pairs.length; i++) {
+			const pair = pairs[i].split('=')
+			const key = decodeURIComponent(pair[0])
+			const value = decodeURIComponent(pair[1] || '')
+			if (key in filters) {
+				filters[key] = value
+				filtered = true
+			}
+		}
+
+		if (filtered) {
+			setTimeout(() => thead.scrollIntoView({ behavior: 'smooth' }), 500)
+		}
+	})
+	onDestroy(() => { qsUnsubscriber() })
 </script>
 
 <div class="row g-3 align-items-center px-4 justify-content-end">
@@ -123,7 +147,7 @@
 </div>
 
 <table class="table w-100">
-	<thead>
+	<thead bind:this={thead}>
 		<tr>
 			<th class="numbering">
 				No
@@ -208,6 +232,8 @@
 	{/if}
 	</tbody>
 </table>
+
+<hr id="finish" />
 
 <section class="pagination-container fixed-bottom">
 	<nav aria-label="Datatable pagination">
