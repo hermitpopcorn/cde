@@ -29,7 +29,7 @@
 
 	$: { pageSize, fetchData() }
 	
-	// pagination buttons
+	// Pagination buttons
 	$: paginationButtons = ((): Array<number> => {
 		let buttons = Array.from({length: Math.ceil(dataCount / pageSize)}, (_, i) => i + 1)
 		let direction = false
@@ -66,7 +66,13 @@
 		return buttons
 	})()
 
-	// refresh the data by requesting it anew
+	// Change pages by external forces
+	export const firstPage = () => { setPage(1) }
+	export const previousPage = () => { setPage(currentPage - 1) }
+	export const nextPage = () => { setPage(currentPage + 1) }
+	export const lastPage = () => { setPage(Math.ceil(dataCount / pageSize)) }
+
+	// Refresh the data by requesting it anew
 	export const fetchData = async () => {
 		let fetchResult = await invoke("get_documents", { page: currentPage, size: pageSize, filters: filters })
 		data = fetchResult[0]
@@ -74,20 +80,20 @@
 		dataCount = fetchResult[2]
 	}
 
-	// change page and request data
+	// Change page and request data
 	const setPage = async (to: number) => {
 		if (to < 1 || to > Math.ceil(dataCount / pageSize)) { return }
 		currentPage = to
 		await fetchData()
 	}
 
-	// filter data after a set timeout
+	// Filter data after a set timeout
 	let timeout: NodeJS.Timeout
 	const startFilterData = (event: Event & { currentTarget: EventTarget }, property: string) => {
-		// if filters are exactly the same as the one active right now, do not request data
+		// If filters are exactly the same as the one active right now, do not request data
 		if (filters[property] === appliedFilters[property]) { return }
 		
-		// wait until user stops typing before requesting data
+		// Wait until user stops typing before requesting data
 		clearTimeout(timeout)
 		timeout = setTimeout(filterData, KeyboardEvent.prototype.isPrototypeOf(event) ? 500 : 10)
 	}
@@ -96,7 +102,7 @@
 		appliedFilters = { ... filters }
 	}
 
-	// format data text (string manipulation)
+	// Format data text (string manipulation)
 	const formatDataText = (tsu, tsa) => {
 		const makeTextObject = (string) => {
 			const isInBrackets = (str: string): boolean => str.startsWith('[') && str.endsWith(']')

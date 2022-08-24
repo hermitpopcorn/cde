@@ -91,7 +91,7 @@
 	<div class="accordion-item">
 		<div id="form-collapsible" class="accordion-collapse collapse show" aria-labelledby="form-heading" data-bs-parent="#accordion">
 			<div class="accordion-body">
-				<form id="input-form" on:keyup={(e) => { handleInputKeyup(e) }}>
+				<form id="input-form" on:keyup={handleInputKeyup}>
 					<div class="row">
 						<div class="col-lg-6">
 							<div class="row align-items-center">
