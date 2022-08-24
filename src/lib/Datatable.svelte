@@ -31,38 +31,30 @@
 	
 	// Pagination buttons
 	$: paginationButtons = ((): Array<number> => {
-		let buttons = Array.from({length: Math.ceil(dataCount / pageSize)}, (_, i) => i + 1)
-		let direction = false
+		let buttons = [currentPage]
+		let direction = true
 		let shifted = 0, popped = 0
-		let failsafe = 0
-		while (buttons.length > 7) {
-			if (direction == false && buttons[0] < currentPage - 3) {
+		const ceiling = Math.ceil(dataCount / pageSize)
+		while (buttons.length < Math.min(11, ceiling)) {
+			if (direction == false && currentPage - (shifted + 1) >= 1) {
 				shifted++
-				buttons.shift()
-			} else if (direction == true && buttons[buttons.length - 1] > currentPage + 3) {
+				buttons.unshift(currentPage - shifted)
+			} else if (direction == true && currentPage + (popped + 1) <= ceiling) {
 				popped++
-				buttons.pop()
+				buttons.push(currentPage + popped)
 			}
 			direction = !direction
-			failsafe++
-			if (failsafe > 100) {
-				break
-			}
 		}
-		if (shifted == 1) {
-			buttons.unshift(1)
-		} else
-		if (shifted >= 2) {
-			buttons.unshift(0)
-			buttons.unshift(1)
+
+		if (buttons[0] !== 1) {
+			buttons[0] = 1
+			buttons[1] = 0
 		}
-		if (popped == 1) {
-			buttons.push(Math.ceil(dataCount / pageSize))
-		} else
-		if (popped >= 2) {
-			buttons.push(0)
-			buttons.push(Math.ceil(dataCount / pageSize))
+		if (buttons[buttons.length - 1] !== ceiling) {
+			buttons[buttons.length - 1] = ceiling
+			buttons[buttons.length - 2] = 0
 		}
+
 		return buttons
 	})()
 
