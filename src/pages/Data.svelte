@@ -28,8 +28,11 @@
 </main>
 
 <style lang="scss">
+	main {
+		min-width: 640px;
+	}
+
 	section.datatable {
 		min-height: 4em;
-		margin-bottom: 3em;
 	}
 </style>

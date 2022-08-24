@@ -25,8 +25,46 @@
 		starred: "",
 	}
 	let appliedFilters = { ... filters }
+	let paginationButtons: Array<number> = []
 
 	$: { pageSize, fetchData() }
+	
+	// pagination buttons
+	$: paginationButtons = ((): Array<number> => {
+		let buttons = Array.from({length: Math.ceil(dataCount / pageSize)}, (_, i) => i + 1)
+		let direction = false
+		let shifted = 0, popped = 0
+		let failsafe = 0
+		while (buttons.length > 7) {
+			if (direction == false && buttons[0] < currentPage - 3) {
+				shifted++
+				buttons.shift()
+			} else if (direction == true && buttons[buttons.length - 1] > currentPage + 3) {
+				popped++
+				buttons.pop()
+			}
+			direction = !direction
+			failsafe++
+			if (failsafe > 100) {
+				break
+			}
+		}
+		if (shifted == 1) {
+			buttons.unshift(1)
+		} else
+		if (shifted >= 2) {
+			buttons.unshift(0)
+			buttons.unshift(1)
+		}
+		if (popped == 1) {
+			buttons.push(Math.ceil(dataCount / pageSize))
+		} else
+		if (popped >= 2) {
+			buttons.push(0)
+			buttons.push(Math.ceil(dataCount / pageSize))
+		}
+		return buttons
+	})()
 
 	// refresh the data by requesting it anew
 	export const fetchData = async () => {
@@ -135,143 +173,141 @@
 	onDestroy(() => { qsUnsubscriber() })
 </script>
 
-<div class="row g-3 align-items-center px-4 justify-content-end">
-	<div class="col-auto">
-	  <label class="col-form-label" for="page-size-control">Items per page</label>
+<section id="table" class="container-fluid">
+	<div class="row g-3 align-items-center p-0 justify-content-end">
+		<div class="col-auto">
+			<label class="col-form-label" for="page-size-control">Items per page</label>
+		</div>
+		<div class="col-auto">
+			<select class="form-control" id="page-size-control" bind:value={pageSize}>
+				<option value={10}>10</option>
+				<option value={20}>20</option>
+				<option value={50}>50</option>
+				<option value={100}>100</option>
+			</select>
+		</div>
 	</div>
-	<div class="col-auto">
-	  <select class="form-control" id="page-size-control" bind:value={pageSize}>
-		<option value={10}>10</option>
-		<option value={20}>20</option>
-		<option value={50}>50</option>
-		<option value={100}>100</option>
-	</select>
-	</div>
-</div>
 
-<table class="table w-100">
-	<thead bind:this={thead}>
-		<tr>
-			<th class="numbering">
-				No
-			</th>
-			<th class="volume">
-				Vol
-				<input type="text" class="form-control" bind:value={filters.volume} on:keyup={(e) => { startFilterData(e, "volume") }}>
-			</th>
-			<th class="page">
-				Page
-				<input type="text" class="form-control" bind:value={filters.page} on:keyup={(e) => { startFilterData(e, "page") }}>
-			</th>
-			<th class="type">
-				Type
-				<select class="form-control" bind:value={filters.type} on:change={(e) => { startFilterData(e, "type") }}>
-					<option value=""></option>
-					<option value="penambahan">A+</option>
-					<option value="pengurangan">R-</option>
-				</select>
-			</th>
-			<th class="note">
-				Note
-				<input type="text" class="form-control" bind:value={filters.note} on:keyup={(e) => { startFilterData(e, "note") }}>
-			</th>
-			<th class="text">
-				Text
-				<input type="text" class="form-control" bind:value={filters.text} on:keyup={(e) => { startFilterData(e, "text") }}>
-			</th>
-			<th class="text">
-				Cause
-				<select class="form-control" bind:value={filters.cause} on:change={(e) => { startFilterData(e, "cause") }}>
-					<option value=""></option>
-					<option value="y">Has</option>
-					<option value="n">Empty</option>
-				</select>
-			</th>
-			<th class="text">
-				Effect
-				<select class="form-control" bind:value={filters.effects} on:change={(e) => { startFilterData(e, "effects") }}>
-					<option value=""></option>
-					<option value="y">Has</option>
-					<option value="n">Empty</option>
-				</select>
-			</th>
-			<th class="action">
-				Edit
-				<select class="form-control" bind:value={filters.starred} on:change={(e) => { startFilterData(e, "starred") }}>
-					<option value=""></option>
-					<option value="y">Starred</option>
-					<option value="n">Unstarred</option>
-				</select>
-			</th>
-		</tr>
-	</thead>
-	<tbody>
-	{#if data}
-		{#each data as row, index}
-			<tr class={{'penambahan': 'amplification', 'pengurangan': 'reduction'}[row.type]}>
-				<td class="numbering">
-					{((currentPage - 1) * pageSize) + (index + 1)}
-				</td>
-				<td>{row.volume ?? ""}</td>
-				<td>{row.page ?? ""}</td>
-				<td>{{'penambahan': 'A+', 'pengurangan': 'R-'}[row.type]}</td>
-				<td>{row.note ?? ""}</td>
-				<td>
-					{#each formatDataText(row.tsu, row.tsa) as p}
-						<p class={p.type}>
-							{#each p.texts as span}
-								{#if span.mark == true}
-									<mark>{span.text}</mark>
-								{:else}
-									{span.text}
+	<div class="row">
+		<div class="col p-0">
+			<table class="table w-100">
+				<thead bind:this={thead}>
+					<tr>
+						<th class="numbering">
+							No
+						</th>
+						<th class="volume">
+							Vol
+							<input type="text" class="form-control" bind:value={filters.volume} on:keyup={(e) => { startFilterData(e, "volume") }}>
+						</th>
+						<th class="page">
+							Page
+							<input type="text" class="form-control" bind:value={filters.page} on:keyup={(e) => { startFilterData(e, "page") }}>
+						</th>
+						<th class="type">
+							Type
+							<select class="form-control" bind:value={filters.type} on:change={(e) => { startFilterData(e, "type") }}>
+								<option value=""></option>
+								<option value="penambahan">A+</option>
+								<option value="pengurangan">R-</option>
+							</select>
+						</th>
+						<th class="note">
+							Note
+							<input type="text" class="form-control" bind:value={filters.note} on:keyup={(e) => { startFilterData(e, "note") }}>
+						</th>
+						<th class="text">
+							Text
+							<input type="text" class="form-control" bind:value={filters.text} on:keyup={(e) => { startFilterData(e, "text") }}>
+						</th>
+						<th class="text">
+							Cause
+							<select class="form-control" bind:value={filters.cause} on:change={(e) => { startFilterData(e, "cause") }}>
+								<option value=""></option>
+								<option value="y">Has</option>
+								<option value="n">Empty</option>
+							</select>
+						</th>
+						<th class="text">
+							Effect
+							<select class="form-control" bind:value={filters.effects} on:change={(e) => { startFilterData(e, "effects") }}>
+								<option value=""></option>
+								<option value="y">Has</option>
+								<option value="n">Empty</option>
+							</select>
+						</th>
+						<th class="action">
+							Edit
+							<select class="form-control" bind:value={filters.starred} on:change={(e) => { startFilterData(e, "starred") }}>
+								<option value=""></option>
+								<option value="y">Starred</option>
+								<option value="n">Unstarred</option>
+							</select>
+						</th>
+					</tr>
+				</thead>
+				<tbody>
+				{#if data}
+					{#each data as row, index}
+						<tr class={{'penambahan': 'amplification', 'pengurangan': 'reduction'}[row.type]}>
+							<td class="numbering">
+								{((currentPage - 1) * pageSize) + (index + 1)}
+							</td>
+							<td>{row.volume ?? ""}</td>
+							<td>{row.page ?? ""}</td>
+							<td>{{'penambahan': 'A+', 'pengurangan': 'R-'}[row.type]}</td>
+							<td>{row.note ?? ""}</td>
+							<td>
+								{#each formatDataText(row.tsu, row.tsa) as p}
+									<p class={p.type}>
+										{#each p.texts as span}
+											{#if span.mark == true}
+												<mark>{span.text}</mark>
+											{:else}
+												{span.text}
+											{/if}
+										{/each}
+									</p>
+								{/each}
+							</td>
+							<td>
+								{#if row.cause}
+									<CheckSquareIcon class="text-success" />
 								{/if}
-							{/each}
-						</p>
+							</td>
+							<td>
+								{#if row.effects?.length > 0}
+									<CheckSquareIcon class="text-success" /><br>
+									({row.effects.length})
+								{/if}
+							</td>
+							<td class="actions">
+								<button class="btn btn-icon btn-primary btn-sm" on:click={() => edit(index)}><EditIcon size="1.2x" /></button>
+								<button class="btn btn-icon btn-danger btn-sm" on:click={() => remove(index)}><Trash2Icon size="1.2x" /></button>
+								<button class="btn btn-icon btn-dark btn-sm" class:btn-warning={ "starred" in row } class:btn-dark={ !("starred" in row) || row.starred == false } on:click={() => star(index)}><StarIcon size="1.2x" /></button>
+							</td>
+						</tr>
 					{/each}
-				</td>
-				<td>
-					{#if row.cause}
-						<CheckSquareIcon class="text-success" />
-					{/if}
-				</td>
-				<td>
-					{#if row.effects?.length > 0}
-						<CheckSquareIcon class="text-success" /><br>
-						({row.effects.length})
-					{/if}
-				</td>
-				<td class="actions">
-					<button class="btn btn-icon btn-primary btn-sm" on:click={() => edit(index)}><EditIcon size="1.2x" /></button>
-					<button class="btn btn-icon btn-danger btn-sm" on:click={() => remove(index)}><Trash2Icon size="1.2x" /></button>
-					<button class="btn btn-icon btn-dark btn-sm" class:btn-warning={ "starred" in row } class:btn-dark={ !("starred" in row) || row.starred == false } on:click={() => star(index)}><StarIcon size="1.2x" /></button>
-				</td>
-			</tr>
-		{/each}
-	{/if}
-	</tbody>
-</table>
+				{/if}
+				</tbody>
+			</table>
+		</div>
+	</div>
+</section>
 
-<hr id="finish" />
-
-<section class="pagination-container fixed-bottom">
+<section id="pagination" class="pagination-container fixed-bottom">
 	<nav aria-label="Datatable pagination">
 		<div class="d-inline">
 			<ul class="pagination justify-content-center">
-				<li class="page-item">
-					<button class="page-link" aria-label="Previous" on:click={() => { setPage(currentPage - 1) }}>
-						<span aria-hidden="true">&laquo;</span>
-					</button>
-				</li>
-				{#each {length: Math.ceil(dataCount / pageSize)} as _, i}
-				<li class={i+1 === currentPage ? "page-item active" : "page-item"}>
-					<button class="page-link" on:click={() => { setPage(i+1) }}>{i + 1}</button>
-				</li>
+				{#each paginationButtons as i}
+					<li class={i === currentPage ? "page-item active" : "page-item"}>
+						{#if i !== 0}
+							<button class="page-link" on:click={() => { setPage(i) }}>{i}</button>
+						{:else}
+							<button class="page-link">...</button>
+						{/if}
+					</li>
 				{/each}
-				<li class="page-item">
-					<button class="page-link" aria-label="Next" on:click={() => { setPage(currentPage + 1) }}>
-						<span aria-hidden="true">&raquo;</span>
-					</button>
-				</li>
 			</ul>
 		</div>
 		<ul class="pagination justify-content-center">
@@ -290,9 +326,6 @@
 	}
 	p {
 		margin: 0.2em;
-	}
-	table {
-		margin-bottom: 5em;
 	}
 	th {
 		vertical-align: middle;
@@ -321,7 +354,10 @@
 		-moz-appearance: revert;
 		-webkit-appearance: revert;
 	}
-	.pagination-container {
+	section#table {
+		margin-bottom: 5em;
+	}
+	section#pagination {
 		padding: 1em 1em;
 		text-align: center;
 		background-color: rgba(0, 0, 0, 0.2);
@@ -330,5 +366,8 @@
 		display: inline-flex;
 		flex-wrap: wrap;
 		margin: 0;
+	}
+	button.page-link {
+		width: 3em;
 	}
 </style>
