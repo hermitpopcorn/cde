@@ -20,6 +20,9 @@
 		type: "",
 		note: "",
 		text: "",
+		cause: "",
+		effects: "",
+		starred: "",
 	}
 	let appliedFilters = { ... filters }
 
@@ -178,12 +181,27 @@
 			</th>
 			<th class="text">
 				Cause
+				<select class="form-control" bind:value={filters.cause} on:change={(e) => { startFilterData(e, "cause") }}>
+					<option value=""></option>
+					<option value="y">Has</option>
+					<option value="n">Empty</option>
+				</select>
 			</th>
 			<th class="text">
 				Effect
+				<select class="form-control" bind:value={filters.effects} on:change={(e) => { startFilterData(e, "effects") }}>
+					<option value=""></option>
+					<option value="y">Has</option>
+					<option value="n">Empty</option>
+				</select>
 			</th>
 			<th class="action">
 				Edit
+				<select class="form-control" bind:value={filters.starred} on:change={(e) => { startFilterData(e, "starred") }}>
+					<option value=""></option>
+					<option value="y">Starred</option>
+					<option value="n">Unstarred</option>
+				</select>
 			</th>
 		</tr>
 	</thead>

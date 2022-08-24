@@ -153,17 +153,13 @@ async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std
 			if value.len() < 1 { continue; }
 
 			match key.as_str() {
-				"volume" => {
+				"volume" | "type" => {
 					// match exactly
 					filter_docs.push(doc!{ key: value });
 				},
 				"page" => {
 					// get if starting matches
 					filter_docs.push(doc!{ key: bson::Regex{ pattern: "^".to_owned() + regex::escape(&value).as_str(), options: String::from("i") } });
-				},
-				"type" => {
-					// match exactly
-					filter_docs.push(doc!{ key: value });
 				},
 				"note" => {
 					// get if contains OR doesn't contain
@@ -181,6 +177,20 @@ async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std
 				"text" => {
 					// get if contains in tsa or tsu
 					filter_docs.push(doc!{ "$or": [doc!{ "tsa": bson::Regex{ pattern: regex::escape(&value), options: String::from("im") } }, doc!{ "tsu": bson::Regex{ pattern: regex::escape(&value), options: String::from("im") } }] });
+				},
+				"cause" | "effects" | "starred" => {
+					// get if has or has no cause/effects
+					let the_bool = match &value[..] {
+						"y" => Some(true),
+						"n" => Some(false),
+						_ => None,
+					};
+					if the_bool.is_none() { continue; }
+					if key == "starred" && the_bool.unwrap() == false {
+						filter_docs.push(doc!{ "$or": [doc!{ &key: false }, doc!{ &key: { "$exists": false } }] });
+					} else {
+						filter_docs.push(doc!{ &key: { "$exists": the_bool.unwrap() } });
+					}
 				},
 				default => {
 					eprintln!("found unknown filter key {}", default);
