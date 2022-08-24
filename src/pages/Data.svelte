@@ -8,7 +8,7 @@
 	let datatable	
 
 	// Variables
-	let stickyForm = false
+	let stickyForm = JSON.parse(localStorage.getItem('stickyForm')) ?? false
 
 	// Listen to EventBus
 	refreshDatatable.subscribe(_ => {
@@ -19,7 +19,7 @@
 
 <main>
 	<section class={stickyForm ? "form sticky-top" : "form"}>
-		<Form bind:this={form} on:save={() => { datatable.fetchData() }} on:toggle-sticky={() => { stickyForm = !stickyForm }} sticky={stickyForm} />
+		<Form bind:this={form} on:save={() => { datatable.fetchData() }} on:toggle-sticky={() => { stickyForm = !stickyForm; localStorage.setItem('stickyForm', stickyForm) }} sticky={stickyForm} />
 	</section>
 	<hr>
 	<section class="datatable">
