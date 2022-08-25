@@ -164,8 +164,8 @@
 						<div class="flex-grow-1">
 							<div class="d-flex gap-2">
 								<div class="flex-grow-1">
-									<div class="form-group">
-										<input type="text" class="form-control" id="input-id" name="_id" value={displayID} readonly>
+									<div class="form-group" style="position: relative">
+										<input type="text" class="form-control {displayID ? 'flash' : ''}" id="input-id" name="_id" value={displayID} readonly>
 									</div>
 								</div>
 								<div class="flex-shrink-1">
@@ -196,5 +196,19 @@
 	#form-body {
 		&.amplification { background: #e7f1ff; }
 		&.reduction { background: #fde9e9; }
+	}
+	input.flash {
+		animation: flashing 3s linear infinite;
+	}
+	@keyframes flashing {
+		0% {
+			background-color: inherit;
+		}
+		50% {
+			background-color: rgba(255, 0, 0, 0.3);
+		}
+		0% {
+			background-color: inherit;
+		}
 	}
 </style>
