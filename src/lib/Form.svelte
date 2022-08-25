@@ -88,7 +88,7 @@
 </script>
 
 <div class="accordion mb-2" id="accordion">
-	<div class="accordion-item">
+	<div class="accordion-item { ((selectedType) => { if (selectedType == "penambahan") { return 'amplification' } else if (selectedType == "pengurangan") { return 'reduction' } })(form.type) }" id="form-body">
 		<div id="form-collapsible" class="accordion-collapse collapse show" aria-labelledby="form-heading" data-bs-parent="#accordion">
 			<div class="accordion-body">
 				<form id="input-form" on:keyup={handleInputKeyup}>
@@ -191,3 +191,10 @@
 		</div>
 	</div>
 </div>
+
+<style lang="scss">
+	#form-body {
+		&.amplification { background: #e7f1ff; }
+		&.reduction { background: #fde9e9; }
+	}
+</style>
