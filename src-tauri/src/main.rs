@@ -11,7 +11,7 @@ use mongodb::{bson::{doc, Document}, options::{ClientOptions, FindOptions, Colla
 use once_cell::sync::OnceCell;
 use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::{anyhow, Error};
-use bson::oid::ObjectId;
+use bson::{oid::ObjectId, spec::ElementType};
 use maplit::hashmap;
 
 static DB: OnceCell<Database> = OnceCell::new();
@@ -309,34 +309,64 @@ async fn get_count_by_columns(columns: Vec<&str>) -> tauri::Result<Vec<Aggregate
 	let collection = db.collection::<Document>(COLLECTION_NAME);
 
 	let mut documents: Vec<AggregateCount> = vec![];
+	let mut unwinds: Vec<String> = vec![];
 	let mut id: Document = doc!{};
 	for (_index, column) in columns.iter().enumerate() {
-		let mut dollared = String::from("$"); dollared.push_str(column);
-		id.insert(column.to_owned(), dollared);
+		if (column.len() < 1) { continue; }
+
+		let mut process_column = String::from(column.to_owned());
+		if process_column.starts_with("unwind:") {
+			process_column = process_column.chars().skip(7).take(process_column.len() - 7).collect();
+			unwinds.push(process_column.clone());
+		}
+		let mut dollared = String::from("$"); dollared.push_str(&process_column);
+		id.insert(&process_column, dollared);
 	}
-	let mut cursor = collection.aggregate([
-		doc!{
-			"$group": doc!{
-				"_id": id,
-				"quantity": doc!{
-					"$sum": 1 as i32,
-				},
+
+	let mut pipeline: Vec<Document> = vec![];
+	for unwind_column in unwinds {
+		pipeline.push(doc!{
+			"$unwind": doc!{
+				"path": "$".to_owned() + &unwind_column,
+				"preserveNullAndEmptyArrays": false,
+			},
+		});
+	}
+	// group by columns
+	pipeline.push(doc!{
+		"$group": doc!{
+			"_id": id,
+			"quantity": doc!{
+				"$sum": 1 as i32,
 			},
 		},
-		doc!{
-			"$sort": doc!{
-				"quantity": -1 as i32,
-			},
+	});
+	// sort by quantity in descending order
+	pipeline.push(doc!{
+		"$sort": doc!{
+			"quantity": -1 as i32,
 		},
-	], None).await.expect("count by column cursor");
+	});
+
+	let mut cursor = collection.aggregate(pipeline, None).await.expect("count by column cursor");
 	while cursor.advance().await.unwrap() {
 		let row: Document = cursor.deserialize_current().expect("count by column data");
 		let mut columns: Vec<(String, String)> = vec![];
 		let id = row.get_document("_id").expect("count by column id");
 		for (_index, (key, value)) in id.iter().enumerate() {
 			let column_key = key.clone();
-			let column_value = value.as_str().expect("count by column id value as str").to_owned();
-			columns.push((column_key, column_value));
+			if value.element_type() == ElementType::Array {
+				let column_vec = value.as_array().expect("count by column id value as array").to_owned();
+				let mut value_string: Vec<String> = vec![];
+				for column_value in column_vec {
+					let column_string = column_value.as_str().expect("count by column id value array as string").to_owned();
+					value_string.push(column_string);
+				}
+				columns.push((column_key, value_string.join(" ")));
+			} else {
+				let column_value = value.as_str().expect("count by column id value as str").to_owned();
+				columns.push((column_key, column_value));
+			}
 		}
 		let quantity: u32 = row.get_i32("quantity").expect("count by column quantity").try_into().expect("count by column quantity as u32");
 		documents.push(AggregateCount { columns, quantity });

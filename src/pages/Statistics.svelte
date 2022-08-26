@@ -1,12 +1,15 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
 	import { invoke } from '@tauri-apps/api/tauri'
-	import { link, replace } from 'svelte-spa-router'
+	import { link } from 'svelte-spa-router'
+	import { PlusIcon, XIcon } from 'svelte-feather-icons'
 
 	let statistics = []
+	let columns = ['type', 'tags']
 
 	export const fetchData = async () => {
-		statistics = await invoke("get_count_by_columns", { columns: ["type", "note"] })
+		columns = columns.filter(i => i)
+		statistics = await invoke("get_count_by_columns", { columns }) ?? []
 	}
 
 	const formatColumnsMap = i => {
@@ -39,6 +42,26 @@
 </script>
 
 <main>
+	<section class="p-4">
+		<div class="d-grid gap-2 mb-2">
+			{#each columns as column, index}
+				<div class="input-group">
+					<select class="form-select" name={`column[${index}]`} bind:value={column}>
+						<option value="type">Type</option>
+						<option value="tags">Tags</option>
+						<option value="unwind:tags">Tags (individually)</option>
+						<option value="volume">Volume</option>
+						<option value="page">Page</option>
+					</select>
+					<button class="btn btn-icon btn-danger" type="button" on:click={() => { columns = columns.filter((_, i) => i !== index); }}><XIcon size="1.2x" /></button>
+				</div>
+			{/each}
+		</div>
+		<div class="d-flex justify-content-between">
+			<button title="Add new column" type="button" class="btn btn-icon btn-sm btn-primary" on:click={() => { columns = [...columns, ""] }}><PlusIcon size="1.2x" /></button>
+			<button title="Load" class="btn btn-icon btn-primary" on:click={fetchData}>Load</button>
+		</div>
+	</section>
 	<table class="table w-100">
 		<thead>
 			<tr>
@@ -46,7 +69,7 @@
 					No
 				</th>
 				<th class="type-note">
-					Type/Note
+					Aggregate
 				</th>
 				<th class="quantity">
 					Quantity

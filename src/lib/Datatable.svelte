@@ -254,7 +254,13 @@
 							<td>{row.volume ?? ""}</td>
 							<td>{row.page ?? ""}</td>
 							<td>{{'penambahan': 'A+', 'pengurangan': 'R-'}[row.type]}</td>
-							<td>{row.tags ? row.tags.join(", ") : ""}</td>
+							<td>
+								<div class="d-flex justify-content-center gap-2 flex-wrap">
+									{#each row.tags as tag}
+										<span>{tag}</span>
+									{/each}
+								</div>
+							</td>
 							<td>
 								{#each formatDataText(row.tsu, row.tsa) as p}
 									<p class={p.type}>
