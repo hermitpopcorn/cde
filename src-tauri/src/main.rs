@@ -56,8 +56,8 @@ async fn connect_client() -> Result<Client, Error> {
 #[tauri::command]
 async fn save_document(
 	id: Option<&str>, tsu: Option<&str>, tsa: Option<&str>,
-	the_type: Option<&str>, note: Option<&str>, volume: Option<&str>, page: Option<&str>,
-	cause: Option<&str>, effects: Vec<&str>
+	the_type: Option<&str>, tags: Option<Vec<&str>>, volume: Option<&str>, page: Option<&str>,
+	cause: Option<&str>, effects: Option<Vec<&str>>, starred: Option<bool>,
 ) -> tauri::Result<()> {
 	// generate timestamp
 	let start = SystemTime::now();
@@ -83,7 +83,6 @@ async fn save_document(
 		"tsu" => &tsu,
 		"tsa" => &tsa,
 		"type" => &the_type,
-		"note" => &note,
 		"volume" => &volume,
 		"page" => &page,
 		"cause" => &cause,
@@ -94,7 +93,7 @@ async fn save_document(
 				doc.insert(field_name, the_string);
 			},
 			None => {
-				// if field value is empty and this is an update opertaion, unset
+				// if field value is empty and this is an update operation, unset
 				if id != None {
 					undoc.insert(field_name, "");
 				};
@@ -102,10 +101,30 @@ async fn save_document(
 		};
 	}
 
-	if effects.len() > 0 {
-		doc.insert("effects", effects);
-	} else {
-		if id != None { undoc.insert("effects", ""); }
+	let array_fields = hashmap!{
+		"tags" => &tags,
+		"effects" => &effects,
+	};
+	for (&field_name, variable_ref) in &array_fields {
+		match variable_ref {
+			Some(the_array) => {
+				if the_array.len() > 0 {
+					doc.insert(field_name, the_array);
+				} else {
+					if id != None { undoc.insert(field_name, ""); }
+				}
+			},
+			None => {
+				// if field value is empty and this is an update operation, unset
+				if id != None {
+					undoc.insert(field_name, "");
+				};
+			},
+		};
+	}
+
+	if starred.is_some() {
+		doc.insert("starred", starred.unwrap());
 	}
 	
 	if id == None {
@@ -161,18 +180,46 @@ async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std
 					// get if starting matches
 					filter_docs.push(doc!{ key: bson::Regex{ pattern: "^".to_owned() + regex::escape(&value).as_str(), options: String::from("i") } });
 				},
-				"note" => {
-					// get if contains OR doesn't contain
-					match &value.starts_with("-") {
-						false => {
-							filter_docs.push(doc!{ key: bson::Regex{ pattern: regex::escape(&value), options: String::from("im") } });
-						},
-						true => {
-							let mut new_value = String::from(&value);
-							new_value.remove(0);
-							filter_docs.push(doc!{ key: doc!{ "$not": bson::Regex{ pattern: regex::escape(&new_value), options: String::from("im") } } });
-						},
+				"tags" => {
+					let mut all_tags: Vec<String> = vec![];
+					let mut in_tags: Vec<String> = vec![];
+					let mut nin_tags: Vec<String> = vec![];
+					// split by space
+					let split_tags = &value.split_whitespace().collect::<Vec<&str>>();
+					for split_value in split_tags {
+						// get if contains OR doesn't contain
+						match split_value.chars().nth(0).unwrap() {
+							'?' => { // question mark: in
+								let mut new_split_value = String::from(split_value.to_owned());
+								new_split_value.remove(0);
+								if new_split_value.len() > 0 {
+									in_tags.push(new_split_value);
+								}
+							},
+							'-' => { // minus: nin
+								let mut new_split_value = String::from(split_value.to_owned());
+								new_split_value.remove(0);
+								if new_split_value.len() > 0 {
+									nin_tags.push(new_split_value);
+								}
+							},
+							_ => { // everything else: all
+								let owned_split_value = String::from(split_value.to_owned());
+								all_tags.push(owned_split_value);
+							},
+						}
 					}
+					let mut filter_doc = doc!{};
+					if all_tags.len() > 0 {
+						filter_doc.insert("$all", all_tags);
+					}
+					if in_tags.len() > 0 {
+						filter_doc.insert("$in", in_tags);
+					}
+					if nin_tags.len() > 0 {
+						filter_doc.insert("$nin", nin_tags);
+					}
+					filter_docs.push(doc!{ key: filter_doc });
 				},
 				"text" => {
 					// get if contains in tsa or tsu

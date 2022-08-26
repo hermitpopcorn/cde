@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/tauri'
 	import { toast } from '@zerodevx/svelte-toast'
-	import { CornerRightDownIcon, LoaderIcon, SaveIcon, PlusIcon, XIcon, AnchorIcon } from 'svelte-feather-icons'
+	import { CornerRightDownIcon, LoaderIcon, SaveIcon, PlusIcon, XIcon, AnchorIcon, StarIcon } from 'svelte-feather-icons'
 	import { createEventDispatcher } from 'svelte'
 	
 	const dispatch = createEventDispatcher()
@@ -10,6 +10,10 @@
 	export let sticky = false
 
 	const save = async () => {
+		if (form.tags.length > 0) {
+			form.tags = form.tags.trim().split(/\s+/).join(" ")
+		}
+
 		const texts = form.text.split("\n")
 		const tsu = texts[0] || null
 		const tsa = texts[1] || null
@@ -20,11 +24,12 @@
 				tsu: tsu,
 				tsa: tsa,
 				theType: form.type,
-				note: form.note.length > 0 ? form.note.trim() : null,
+				tags: form.tags.length > 0 ? form.tags.trim().split(/\s+/) : null,
 				volume: form.volume.length > 0 ? form.volume.trim() : null,
 				page: form.page.length > 0 ? form.page.trim() : null,
 				cause: form.cause.length > 0 ? form.cause.trim() : null,
 				effects: form.effects.filter(i => i.length > 0).map(i => i.trim()),
+				starred: form.starred,
 			})
 			toast.push("Data saved successfully.", { theme: { '--toastBackground': 'green' } })
 			dispatch('save')
@@ -38,12 +43,13 @@
 			index: null,
 			id: null,
 			type: "penambahan",
-			note: "",
+			tags: "",
 			volume: "",
 			page: "",
 			text: "",
 			cause: "",
 			effects: [],
+			starred: false,
 		}
 	}
 
@@ -57,12 +63,13 @@
 		form.index = row.index
 		form.id = row._id.$oid
 		form.type = row.type
-		form.note = row.note ?? ""
+		form.tags = row.tags?.join(" ") ?? ""
 		form.volume = row.volume ?? ""
 		form.page = row.page ?? ""
 		form.text = [row.tsu || "", row.tsa || ""].join("\n")
 		form.cause = row.cause ?? ""
 		form.effects = row.effects ?? []
+		form.starred = row.starred ?? false
 	}
 
 	const handleInputKeyup = (e: Event) => {
@@ -119,10 +126,10 @@
 										<input type="text" class="form-control" id="input-page" name="page" bind:value={form.page}>
 									</div>
 								</div>
-								<div class="col-6">
+								<div class="col-5">
 									<div class="form-group">
-										<label for="input-note">Note</label>
-										<input type="text" class="form-control" id="input-note" name="note" bind:value={form.note}>
+										<label for="input-tags">Tags</label>
+										<input type="text" class="form-control" id="input-tags" name="tags" bind:value={form.tags}>
 									</div>
 								</div>
 							</div>
@@ -163,6 +170,9 @@
 					<div class="d-flex justify-content-between mt-2">
 						<div class="flex-grow-1">
 							<div class="d-flex gap-2">
+								<div class="flex-shrink-1">
+									<button title="Star this entry" type="button" class="btn btn-icon btn-dark" class:btn-warning={form.starred} class:btn-dark={!form.starred} on:click={() => form.starred = !form.starred}><StarIcon size="1.2x" /></button>
+								</div>
 								<div class="flex-grow-1">
 									<div class="form-group" style="position: relative">
 										<input type="text" class="form-control {displayID ? 'flash' : ''}" id="input-id" name="_id" value={displayID} readonly>

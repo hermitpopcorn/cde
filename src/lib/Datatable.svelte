@@ -18,7 +18,7 @@
 		volume: "",
 		page: "",
 		type: "",
-		note: "",
+		tags: "",
 		text: "",
 		cause: "",
 		effects: "",
@@ -210,9 +210,9 @@
 								<option value="pengurangan">R-</option>
 							</select>
 						</th>
-						<th class="note">
-							Note
-							<input type="text" class="form-control" bind:value={filters.note} on:keyup={(e) => { startFilterData(e, "note") }}>
+						<th class="tags">
+							Tags
+							<input type="text" class="form-control" bind:value={filters.tags} on:keyup={(e) => { startFilterData(e, "tags") }}>
 						</th>
 						<th class="text">
 							Text
@@ -254,7 +254,7 @@
 							<td>{row.volume ?? ""}</td>
 							<td>{row.page ?? ""}</td>
 							<td>{{'penambahan': 'A+', 'pengurangan': 'R-'}[row.type]}</td>
-							<td>{row.note ?? ""}</td>
+							<td>{row.tags ? row.tags.join(", ") : ""}</td>
 							<td>
 								{#each formatDataText(row.tsu, row.tsa) as p}
 									<p class={p.type}>
@@ -282,7 +282,7 @@
 							<td class="actions">
 								<button class="btn btn-icon btn-primary btn-sm" on:click={() => edit(index)}><EditIcon size="1.2x" /></button>
 								<button class="btn btn-icon btn-danger btn-sm" on:click={() => remove(index)}><Trash2Icon size="1.2x" /></button>
-								<button class="btn btn-icon btn-dark btn-sm" class:btn-warning={ "starred" in row } class:btn-dark={ !("starred" in row) || row.starred == false } on:click={() => star(index)}><StarIcon size="1.2x" /></button>
+								<button class="btn btn-icon btn-dark btn-sm" class:btn-warning={"starred" in row} class:btn-dark={!("starred" in row) || row.starred == false} on:click={() => star(index)}><StarIcon size="1.2x" /></button>
 							</td>
 						</tr>
 					{/each}
@@ -332,7 +332,7 @@
 		&.volume { width: 5%; }
 		&.page { width: 5%; }
 		&.type { width: 10%; }
-		&.note { width: 20%; }
+		&.tags { width: 20%; }
 		&.action { width: 5%; }
 	}
 	tr {
