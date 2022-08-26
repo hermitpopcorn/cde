@@ -233,11 +233,14 @@ async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std
 						_ => None,
 					};
 					if the_bool.is_none() { continue; }
-					if key == "starred" && the_bool.unwrap() == false {
-						filter_docs.push(doc!{ "$or": [doc!{ &key: false }, doc!{ &key: { "$exists": false } }] });
-					} else {
-						filter_docs.push(doc!{ &key: { "$exists": the_bool.unwrap() } });
+					if key == "starred" {
+						match the_bool.unwrap() {
+							true => filter_docs.push(doc!{ &key: true }),
+							false => filter_docs.push(doc!{ "$or": [doc!{ &key: false }, doc!{ &key: { "$exists": false } }] }),
+						}
+						break;
 					}
+					filter_docs.push(doc!{ &key: { "$exists": the_bool.unwrap() } });
 				},
 				default => {
 					eprintln!("found unknown filter key {}", default);
