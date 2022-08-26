@@ -72,10 +72,10 @@ async fn save_document(
 	// fill created or updated depending on operation (insert/update)
 	match id {
 		Some(_) => {
-			doc = doc!{ "created": since_the_epoch.as_secs() as u32 };
+			doc = doc!{ "updated": since_the_epoch.as_secs() as u32 };
 		},
 		None => {
-			doc = doc!{ "updated": since_the_epoch.as_secs() as u32 };
+			doc = doc!{ "created": since_the_epoch.as_secs() as u32 };
 		},
 	};
 
@@ -312,7 +312,7 @@ async fn get_count_by_columns(columns: Vec<&str>) -> tauri::Result<Vec<Aggregate
 	let mut unwinds: Vec<String> = vec![];
 	let mut id: Document = doc!{};
 	for (_index, column) in columns.iter().enumerate() {
-		if (column.len() < 1) { continue; }
+		if column.len() < 1 { continue; }
 
 		let mut process_column = String::from(column.to_owned());
 		if process_column.starts_with("unwind:") {
