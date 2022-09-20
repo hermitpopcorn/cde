@@ -3,19 +3,15 @@
 	windows_subsystem = "windows"
 )]
 
-const DATABASE_NAME: &str = "datent";
-const COLLECTION_NAME: &str = "kasane";
-
 use tauri::{CustomMenuItem, Menu, WindowMenuEvent};
-use mongodb::{bson::{doc, Document}, options::{ClientOptions, FindOptions, Collation}, Client, Database};
-use once_cell::sync::OnceCell;
-use std::time::{SystemTime, UNIX_EPOCH};
-use anyhow::{anyhow, Error};
+use mongodb::{bson::{doc, Document}, options::{ClientOptions, FindOptions, Collation}, Client, Database, Collection};
+use std::{time::{SystemTime, UNIX_EPOCH}, sync::Mutex};
+use anyhow::{anyhow, Error, Result};
 use bson::{oid::ObjectId, spec::ElementType};
 use maplit::hashmap;
 
-static DB: OnceCell<Database> = OnceCell::new();
-
+static COLLECTION_NAME: Mutex<Option<String>> = Mutex::new(None);
+static DATABASE: Mutex<Option<Database>> = Mutex::new(None);
 
 #[derive(Clone, serde::Serialize)]
 struct ChangePagePayload {
@@ -23,33 +19,64 @@ struct ChangePagePayload {
 }
 
 #[tauri::command]
-async fn db_connect() -> tauri::Result<bool> {
-	if DB.get().is_none() == false {
-		return Ok(false);
-	}
-
-	let attempt = connect_client().await;
+async fn db_connect(connection_string: &str, database_name: &str, collection_name: &str) -> tauri::Result<bool> {
+	let attempt = connect_client(connection_string).await;
 	match attempt {
 		Ok(client) => {
-			let _set_db = DB.set(client.database(DATABASE_NAME)).unwrap();
+			let mut set_database = DATABASE.lock().unwrap();
+			*set_database = Some(client.database(database_name));
+			let mut set_collection_name = COLLECTION_NAME.lock().unwrap();
+			*set_collection_name = Some(String::from(collection_name));
 			return Ok(true);
 		},
-		Err(msg) => {
-			eprintln!("{}", msg);
+		Err(_msg) => {
 			return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Could not connect to Database."))));
 		},
 	}
 }
 
-async fn connect_client() -> Result<Client, Error> {
-	let mut client_options = ClientOptions::parse("mongodb://localhost:27017").await?;
-	client_options.app_name = Some("CDE".to_string());
-	let client = Client::with_options(client_options)?;
+async fn connect_client(connection_string: &str) -> Result<Client, Error> {
+	/* all that time just to fucking fail. i hate this db
+	let credential = match username.is_some() {
+		true => Some(Credential::builder().username(username).password(password).source(Some(String::from("admin"))).build()),
+		false => None,
+	};
+	let client_options = ClientOptions::builder()
+		.hosts(vec![ServerAddress::Tcp { host: String::from(host), port: port }])
+		.app_name(Some(String::from("MongoDB Compass")))
+		.direct_connection(Some(true))
+		.retry_writes(Some(true))
+		.read_concern(Some(ReadConcern::majority()))
+		.selection_criteria(Some(mongodb::options::SelectionCriteria::ReadPreference(mongodb::options::ReadPreference::Primary)))
+		.write_concern(Some(WriteConcern::builder().w(Some(mongodb::options::Acknowledgment::Majority)).build()))
+		.repl_set_name(replica_set_name)
+		.credential(credential)
+		.connect_timeout(Some(core::time::Duration::new(5, 0)))
+		.server_selection_timeout(Some(core::time::Duration::new(5, 0)))
+		.tls(Some(Tls::Enabled(TlsOptions::builder().allow_invalid_certificates(Some(true)).build())))
+		.build()
+	;
+	*/
 
-	// attempt connection
+	let client = Client::with_options(ClientOptions::parse(connection_string).await.expect("parsed connection string")).expect("database client");
+
+	// Attempt connection
 	match client.database("admin").run_command(doc!{"ping": 1}, None).await {
 		Ok(_) => Ok(client),
-		_ => Err(anyhow!("Could not connect to database.")),
+		Err(error) => {
+			eprintln!("{:#?}", error);
+			Err(anyhow!("Could not connect to database."))
+		}
+	}
+}
+
+fn get_collection() -> Result<Collection<Document>, Error> {
+	if COLLECTION_NAME.lock().unwrap().as_ref().is_none() {
+		return Err(anyhow!("No collection name specified."))
+	}
+	match DATABASE.lock().unwrap().as_ref() {
+		Some(database) => Ok(database.collection::<Document>(COLLECTION_NAME.lock().unwrap().as_ref().unwrap())),
+		None => Err(anyhow!("Could not get database connection.")),
 	}
 }
 
@@ -59,17 +86,21 @@ async fn save_document(
 	the_type: Option<&str>, tags: Option<Vec<&str>>, volume: Option<&str>, page: Option<&str>,
 	cause: Option<&str>, effects: Option<Vec<&str>>, starred: Option<bool>,
 ) -> tauri::Result<()> {
-	// generate timestamp
+	// Generate timestamp
 	let start = SystemTime::now();
 	let since_the_epoch = start.duration_since(UNIX_EPOCH).expect("duration since the epoch");
 
-	let db = DB.get().expect("db connection");
-	let collection = db.collection::<Document>(COLLECTION_NAME);
+	let collection: Collection<Document>;
+	let get_collection = get_collection();
+	match get_collection {
+		Ok(c) => { collection = c },
+		Err(error) => { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from(error.to_string())))); }
+	}
 	
 	let mut doc: Document;
 	let mut undoc: Document = doc!{};
 
-	// fill created or updated depending on operation (insert/update)
+	// Fill created or updated depending on operation (insert/update)
 	match id {
 		Some(_) => {
 			doc = doc!{ "updated": since_the_epoch.as_secs() as u32 };
@@ -93,7 +124,7 @@ async fn save_document(
 				doc.insert(field_name, the_string);
 			},
 			None => {
-				// if field value is empty and this is an update operation, unset
+				// If field value is empty and this is an update operation, unset
 				if id != None {
 					undoc.insert(field_name, "");
 				};
@@ -115,7 +146,7 @@ async fn save_document(
 				}
 			},
 			None => {
-				// if field value is empty and this is an update operation, unset
+				// If field value is empty and this is an update operation, unset
 				if id != None {
 					undoc.insert(field_name, "");
 				};
@@ -128,12 +159,12 @@ async fn save_document(
 	}
 	
 	if id == None {
-		// insert operation
+		// Insert operation
 		let result = collection.insert_one(doc, None).await;
 		if result.is_err() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Insert error.")))); }
 	} else {
-		// update operation
-		// create container document
+		// Update operation
+		// Create container document
 		let mut setdoc = doc!{};
 		if doc.len() > 0 { setdoc.insert("$set", doc); }
 		if undoc.len() > 0 { setdoc.insert("$unset", undoc); }
@@ -148,8 +179,12 @@ async fn save_document(
 
 #[tauri::command]
 async fn remove_document(id: Option<&str>) -> tauri::Result<()> {
-	let db = DB.get().expect("db connection");
-	let collection = db.collection::<Document>(COLLECTION_NAME);
+	let collection: Collection<Document>;
+	let get_collection = get_collection();
+	match get_collection {
+		Ok(c) => { collection = c },
+		Err(error) => { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from(error.to_string())))); }
+	}
 
 	let oid: ObjectId = ObjectId::parse_str(id.unwrap()).unwrap();
 	let result = collection.delete_one(doc!{ "_id": oid }, None).await;
@@ -158,13 +193,15 @@ async fn remove_document(id: Option<&str>) -> tauri::Result<()> {
 }
 
 #[tauri::command]
-async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std::collections::HashMap<String, String>>) -> (Vec<Document>, u64, u64) {
-	if DB.get().is_none() { return (vec![], 1, 0); }
+async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std::collections::HashMap<String, String>>) -> tauri::Result<(Vec<Document>, u64, u64)> {
+	let collection: Collection<Document>;
+	let get_collection = get_collection();
+	match get_collection {
+		Ok(c) => { collection = c },
+		Err(error) => { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from(error.to_string())))); }
+	}
 
-	let db = DB.get().expect("db connection");
-	let collection = db.collection::<Document>(COLLECTION_NAME);
-
-	// construct search criteria document
+	// Construct search criteria document
 	let mut search: Option<Document> = None;
 	if !filters.is_none() {
 		let mut filter_docs: Vec<Document> = vec![];
@@ -173,37 +210,37 @@ async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std
 
 			match key.as_str() {
 				"volume" | "type" => {
-					// match exactly
+					// Match exactly
 					filter_docs.push(doc!{ key: value });
 				},
 				"page" => {
-					// get if starting matches
+					// Get if starting matches
 					filter_docs.push(doc!{ key: bson::Regex{ pattern: "^".to_owned() + regex::escape(&value).as_str(), options: String::from("i") } });
 				},
 				"tags" => {
 					let mut all_tags: Vec<String> = vec![];
 					let mut in_tags: Vec<String> = vec![];
 					let mut nin_tags: Vec<String> = vec![];
-					// split by space
+					// Split by space
 					let split_tags = &value.split_whitespace().collect::<Vec<&str>>();
 					for split_value in split_tags {
-						// get if contains OR doesn't contain
+						// Get if contains OR doesn't contain
 						match split_value.chars().nth(0).unwrap() {
-							'?' => { // question mark: in
+							'?' => { // Question mark: in
 								let mut new_split_value = String::from(split_value.to_owned());
 								new_split_value.remove(0);
 								if new_split_value.len() > 0 {
 									in_tags.push(new_split_value);
 								}
 							},
-							'-' => { // minus: nin
+							'-' => { // Minus: nin
 								let mut new_split_value = String::from(split_value.to_owned());
 								new_split_value.remove(0);
 								if new_split_value.len() > 0 {
 									nin_tags.push(new_split_value);
 								}
 							},
-							_ => { // everything else: all
+							_ => { // Everything else: all
 								let owned_split_value = String::from(split_value.to_owned());
 								all_tags.push(owned_split_value);
 							},
@@ -222,11 +259,11 @@ async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std
 					filter_docs.push(doc!{ key: filter_doc });
 				},
 				"text" => {
-					// get if contains in tsa or tsu
+					// Get if contains in tsa or tsu
 					filter_docs.push(doc!{ "$or": [doc!{ "tsa": bson::Regex{ pattern: regex::escape(&value), options: String::from("im") } }, doc!{ "tsu": bson::Regex{ pattern: regex::escape(&value), options: String::from("im") } }] });
 				},
 				"cause" | "effects" | "starred" => {
-					// get if has or has no cause/effects
+					// Get if has or has no cause/effects
 					let the_bool = match &value[..] {
 						"y" => Some(true),
 						"n" => Some(false),
@@ -272,13 +309,17 @@ async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std
 		documents.push(cursor.deserialize_current().unwrap());
 	}
 
-	(documents, page, total_filtered_count)
+	Ok((documents, page, total_filtered_count))
 }
 
 #[tauri::command]
 async fn star_document(id: &str) -> tauri::Result<bool> {
-	let db = DB.get().expect("db connection");
-	let collection = db.collection::<Document>(COLLECTION_NAME);
+	let collection: Collection<Document>;
+	let get_collection = get_collection();
+	match get_collection {
+		Ok(c) => { collection = c },
+		Err(error) => { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from(error.to_string())))); }
+	}
 
 	let oid: ObjectId = ObjectId::parse_str(id).expect("valid oid");
 	let search = collection.find_one(doc!{ "_id": oid }, None).await.unwrap();
@@ -292,7 +333,10 @@ async fn star_document(id: &str) -> tauri::Result<bool> {
 
 	let setdoc = if !starred { doc!{ "$set": doc!{ "starred": true } } } else { doc!{ "$unset": doc!{ "starred": false } } };
 	let result = collection.find_one_and_update(doc!{ "_id": oid, }, setdoc, None).await;
-	if result.is_err() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Update error.")))); }
+	if result.is_err() {
+		eprintln!("{:#?}", result.err().unwrap());
+		return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Update error."))));
+	}
 	if result.unwrap().is_none() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Did not update any data. Maybe data does not exist in database?")))); }
 	
 	Ok(!starred)
@@ -306,10 +350,12 @@ struct AggregateCount {
 
 #[tauri::command]
 async fn get_count_by_columns(columns: Vec<&str>) -> tauri::Result<Vec<AggregateCount>> {
-	if DB.get().is_none() { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from("Not connected to database.")))); }
-
-	let db = DB.get().expect("db connection");
-	let collection = db.collection::<Document>(COLLECTION_NAME);
+	let collection: Collection<Document>;
+	let get_collection = get_collection();
+	match get_collection {
+		Ok(c) => { collection = c },
+		Err(error) => { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from(error.to_string())))); }
+	}
 
 	let mut documents: Vec<AggregateCount> = vec![];
 	let mut unwinds: Vec<String> = vec![];
@@ -335,7 +381,7 @@ async fn get_count_by_columns(columns: Vec<&str>) -> tauri::Result<Vec<Aggregate
 			},
 		});
 	}
-	// group by columns
+	// Group by columns
 	pipeline.push(doc!{
 		"$group": doc!{
 			"_id": id,
@@ -344,7 +390,7 @@ async fn get_count_by_columns(columns: Vec<&str>) -> tauri::Result<Vec<Aggregate
 			},
 		},
 	});
-	// sort by quantity in descending order
+	// Sort by quantity in descending order
 	pipeline.push(doc!{
 		"$sort": doc!{
 			"quantity": -1 as i32,

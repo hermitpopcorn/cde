@@ -1,12 +1,12 @@
 [package]
 name = "cde"
-version = "0.5.0"
+version = "0.6.0"
 description = "A Tauri App"
 authors = ["hermitpopcorn"]
 repository = "https://github.com/hermitpopcorn/cde"
 default-run = "cde"
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.63"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

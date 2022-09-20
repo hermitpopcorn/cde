@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/tauri'
 	import { toast } from '@zerodevx/svelte-toast'
-	import { EditIcon, Trash2Icon, CheckSquareIcon, StarIcon } from 'svelte-feather-icons'
+	import { EditIcon, Trash2Icon, CheckSquareIcon, StarIcon, RefreshCwIcon } from 'svelte-feather-icons'
 	import { onMount, onDestroy } from 'svelte'
 	import { querystring } from 'svelte-spa-router'
 	import { createEventDispatcher } from 'svelte'
+	import { databaseConnectionStatus } from './EventBus'
 
 	const dispatch = createEventDispatcher()
 
@@ -27,7 +28,10 @@
 	let appliedFilters = { ... filters }
 	let paginationButtons: Array<number> = []
 
-	$: { pageSize, fetchData() }
+	$: pageSize, fetchData()
+
+	let databaseConnected = false
+	databaseConnectionStatus.subscribe(value => { databaseConnected = value })
 	
 	// Pagination buttons
 	$: paginationButtons = ((): Array<number> => {
@@ -66,7 +70,17 @@
 
 	// Refresh the data by requesting it anew
 	export const fetchData = async () => {
-		let fetchResult = await invoke("get_documents", { page: currentPage, size: pageSize, filters: filters })
+		if (!databaseConnected) {
+			return
+		}
+
+		let fetchResult
+		try {
+			fetchResult = await invoke("get_documents", { page: currentPage, size: pageSize, filters: filters })
+		} catch (e) {
+			let message = (e as string).split(": ").pop();
+			return toast.push(`Fetch failed: ${message}`, { theme: { '--toastBackground': 'red' }, duration: 5000 })
+		}
 		data = fetchResult[0]
 		currentPage = fetchResult[1]
 		dataCount = fetchResult[2]
@@ -144,6 +158,7 @@
 			data[index].starred = false
 		}
 	}
+
 	onMount(() => {
 		if (data.length < 1) {
 			fetchData()
@@ -247,16 +262,16 @@
 				<tbody>
 				{#if data}
 					{#each data as row, index}
-						<tr class={{'penambahan': 'amplification', 'pengurangan': 'reduction'}[row.type]}>
+						<tr class={({'penambahan': 'amplification', 'pengurangan': 'reduction'})[row.type]}>
 							<td class="numbering">
 								{((currentPage - 1) * pageSize) + (index + 1)}
 							</td>
 							<td>{row.volume ?? ""}</td>
 							<td>{row.page ?? ""}</td>
-							<td>{{'penambahan': 'A+', 'pengurangan': 'R-'}[row.type]}</td>
+							<td>{({'penambahan': 'A+', 'pengurangan': 'R-'})[row.type]}</td>
 							<td>
 								<div class="d-flex justify-content-center gap-2 flex-wrap">
-									{#each row.tags as tag}
+									{#each row.tags ?? [] as tag}
 										<span>{tag}</span>
 									{/each}
 								</div>
@@ -308,7 +323,7 @@
 						{#if i !== 0}
 							<button class="page-link" on:click={() => { setPage(i) }}>{i}</button>
 						{:else}
-							<button class="page-link">...</button>
+							<button class="page-link unclickable" disabled>...</button>
 						{/if}
 					</li>
 				{/each}
@@ -316,8 +331,8 @@
 		</div>
 		<ul class="pagination justify-content-center">
 			<li class="page-item active">
-				<button class="page-link" aria-label="Refresh" on:click={() => { fetchData() }}>
-					<span aria-hidden="true">⟳</span>
+				<button class="btn btn-icon page-link" disabled={!databaseConnected} aria-label="Refresh" on:click={() => { fetchData() }}>
+					<RefreshCwIcon size="1.2x" />
 				</button>
 			</li>
 		</ul>
@@ -373,5 +388,8 @@
 	}
 	button.page-link {
 		width: 3em;
+		&.unclickable:hover {
+			background-color: var(--bs-pagination-bg);
+		}
 	}
 </style>

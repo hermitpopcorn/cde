@@ -3,13 +3,21 @@
 	import { toast } from '@zerodevx/svelte-toast'
 	import { CornerRightDownIcon, LoaderIcon, SaveIcon, PlusIcon, XIcon, AnchorIcon, StarIcon } from 'svelte-feather-icons'
 	import { createEventDispatcher } from 'svelte'
+	import { databaseConnectionStatus } from './EventBus'
 	
 	const dispatch = createEventDispatcher()
+
+	let databaseConnected = false
+	databaseConnectionStatus.subscribe(value => { databaseConnected = value })
 	
 	let form
 	export let sticky = false
 
 	const save = async () => {
+		if (!databaseConnected) {
+			return
+		}
+
 		if (form.tags.length > 0) {
 			form.tags = form.tags.trim().split(/\s+/).join(" ")
 		}
@@ -33,7 +41,7 @@
 			})
 			toast.push("Data saved successfully.", { theme: { '--toastBackground': 'green' } })
 			dispatch('save')
-		} catch(e) {
+		} catch (e) {
 			let message = (e as string).split(": ").pop()
 			toast.push(`Save failed: ${message}`, { theme: { '--toastBackground': 'red' }, duration: 5000 })
 		}
@@ -99,9 +107,9 @@
 		<div id="form-collapsible" class="accordion-collapse collapse show" aria-labelledby="form-heading" data-bs-parent="#accordion">
 			<div class="accordion-body">
 				<form id="input-form" on:keyup={handleInputKeyup}>
-					<div class="row">
+					<div class="row gx-2">
 						<div class="col-lg-6">
-							<div class="row align-items-center">
+							<div class="row gx-2 align-items-center">
 								<div class="col">
 									<div class="form-group">
 										<div class="form-check">
@@ -133,7 +141,7 @@
 									</div>
 								</div>
 							</div>
-							<div class="row">
+							<div class="row gx-2">
 								<div class="col">
 									<div class="form-group">
 										<label for="input-text">Text</label>
@@ -143,7 +151,7 @@
 							</div>
 						</div>
 						<div class="col-lg-6">
-							<div class="row h-100">
+							<div class="row gx-2 h-100">
 								<div class="col">
 									<div class="form-group h-100 d-flex flex-column">
 										<label for="input-text">Cause</label>
@@ -190,8 +198,8 @@
 							<div class="d-flex justify-content-end align-items-center gap-3">
 								<span id="process-info"></span>
 								<div class="form-group text-end">
-									<button title="Make the form sticky to top of the page" class={sticky ? "btn btn-primary" : "btn"} type="button" on:click={() => { toggleSticky() }}><AnchorIcon size="1.2x" /></button>
-									<button title="Save" class="btn btn-primary" type="button" on:click={() => { save() }}><SaveIcon size="1.2x" /></button>
+									<button title="Make the form sticky to top of the page" class={sticky ? "btn btn-icon btn-primary" : "btn btn-icon"} type="button" on:click={() => { toggleSticky() }}><AnchorIcon size="1.2x" /></button>
+									<button title="Save" class="btn btn-icon btn-primary" disabled={!databaseConnected} type="button" on:click={() => { save() }}><SaveIcon size="1.2x" /></button>
 								</div>
 							</div>
 						</div>
