@@ -1,6 +1,6 @@
 [package]
 name = "cde"
-version = "0.6.1"
+version = "0.6.2"
 description = "A Tauri App"
 authors = ["hermitpopcorn"]
 repository = "https://github.com/hermitpopcorn/cde"
