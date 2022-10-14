@@ -275,9 +275,9 @@ async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std
 							true => filter_docs.push(doc!{ &key: true }),
 							false => filter_docs.push(doc!{ "$or": [doc!{ &key: false }, doc!{ &key: { "$exists": false } }] }),
 						}
-						break;
+					} else {
+						filter_docs.push(doc!{ &key: { "$exists": the_bool.unwrap() } });
 					}
-					filter_docs.push(doc!{ &key: { "$exists": the_bool.unwrap() } });
 				},
 				default => {
 					eprintln!("found unknown filter key {}", default);
