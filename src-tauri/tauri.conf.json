@@ -8,9 +8,17 @@
   },
   "package": {
     "productName": "Comparative Data Entry",
-    "version": "0.6.2"
+    "version": "0.6.3"
   },
   "tauri": {
+    "allowlist": {
+      "all": false,
+      "dialog": {
+        "ask": true,
+        "confirm": true,
+        "message": true
+      }
+    },
     "bundle": {
       "active": true,
       "category": "DeveloperTool",

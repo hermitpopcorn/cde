@@ -1,6 +1,6 @@
 [package]
 name = "cde"
-version = "0.6.2"
+version = "0.6.3"
 description = "A Tauri App"
 authors = ["hermitpopcorn"]
 repository = "https://github.com/hermitpopcorn/cde"
@@ -16,7 +16,7 @@ tauri-build = { version = "1.0.2", features = [] }
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "1.1", features = [] }
+tauri = { version = "1.1", features = ["dialog-ask", "dialog-confirm", "dialog-message"] }
 futures = "0.3"
 mongodb = "2.3"
 bson = { version = "2", features = ["chrono-0_4"] } # Needed for using chrono datetime in doc
