@@ -219,7 +219,7 @@
 						</th>
 						<th class="type">
 							Type
-							<select class="form-control" bind:value={filters.type} on:change={(e) => { startFilterData(e, "type") }}>
+							<select class="form-control no-caret" bind:value={filters.type} on:change={(e) => { startFilterData(e, "type") }}>
 								<option value=""></option>
 								<option value="penambahan">A+</option>
 								<option value="pengurangan">R-</option>
@@ -235,7 +235,7 @@
 						</th>
 						<th class="text">
 							Cause
-							<select class="form-control" bind:value={filters.cause} on:change={(e) => { startFilterData(e, "cause") }}>
+							<select class="form-control no-caret" bind:value={filters.cause} on:change={(e) => { startFilterData(e, "cause") }}>
 								<option value=""></option>
 								<option value="y">Has</option>
 								<option value="n">Empty</option>
@@ -243,7 +243,7 @@
 						</th>
 						<th class="text">
 							Effect
-							<select class="form-control" bind:value={filters.effects} on:change={(e) => { startFilterData(e, "effects") }}>
+							<select class="form-control no-caret" bind:value={filters.effects} on:change={(e) => { startFilterData(e, "effects") }}>
 								<option value=""></option>
 								<option value="y">Has</option>
 								<option value="n">Empty</option>
@@ -251,7 +251,7 @@
 						</th>
 						<th class="action">
 							Edit
-							<select class="form-control" bind:value={filters.starred} on:change={(e) => { startFilterData(e, "starred") }}>
+							<select class="form-control no-caret" bind:value={filters.starred} on:change={(e) => { startFilterData(e, "starred") }}>
 								<option value=""></option>
 								<option value="y">Starred</option>
 								<option value="n">Unstarred</option>
@@ -391,5 +391,9 @@
 		&.unclickable:hover {
 			background-color: var(--bs-pagination-bg);
 		}
+	}
+
+	select.no-caret {
+		appearance: none;
 	}
 </style>
