@@ -7,7 +7,7 @@ use tauri::{CustomMenuItem, Menu, WindowMenuEvent};
 use mongodb::{bson::{doc, Document}, options::{ClientOptions, FindOptions, Collation}, Client, Database, Collection};
 use std::{time::{SystemTime, UNIX_EPOCH}, sync::Mutex};
 use anyhow::{anyhow, Error, Result};
-use bson::{oid::ObjectId, spec::ElementType};
+use bson::{oid::ObjectId, spec::ElementType, Regex};
 use maplit::hashmap;
 
 static COLLECTION_NAME: Mutex<Option<String>> = Mutex::new(None);
@@ -218,9 +218,9 @@ async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std
 					filter_docs.push(doc!{ key: bson::Regex{ pattern: "^".to_owned() + regex::escape(&value).as_str(), options: String::from("i") } });
 				},
 				"tags" => {
-					let mut all_tags: Vec<String> = vec![];
-					let mut in_tags: Vec<String> = vec![];
-					let mut nin_tags: Vec<String> = vec![];
+					let mut all_tags: Vec<Regex> = vec![];
+					let mut in_tags: Vec<Regex> = vec![];
+					let mut nin_tags: Vec<Regex> = vec![];
 					// Split by space
 					let split_tags = &value.split_whitespace().collect::<Vec<&str>>();
 					for split_value in split_tags {
@@ -230,19 +230,28 @@ async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std
 								let mut new_split_value = String::from(split_value.to_owned());
 								new_split_value.remove(0);
 								if new_split_value.len() > 0 {
-									in_tags.push(new_split_value);
+									in_tags.push(Regex{
+										pattern: regex::escape(&new_split_value),
+										options: String::from("i")
+									});
 								}
 							},
 							'-' => { // Minus: nin
 								let mut new_split_value = String::from(split_value.to_owned());
 								new_split_value.remove(0);
 								if new_split_value.len() > 0 {
-									nin_tags.push(new_split_value);
+									nin_tags.push(Regex{
+										pattern: regex::escape(&new_split_value),
+										options: String::from("i")
+									});
 								}
 							},
 							_ => { // Everything else: all
 								let owned_split_value = String::from(split_value.to_owned());
-								all_tags.push(owned_split_value);
+								all_tags.push(Regex{
+									pattern: regex::escape(&owned_split_value),
+									options: String::from("i")
+								});
 							},
 						}
 					}
@@ -260,7 +269,7 @@ async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std
 				},
 				"text" => {
 					// Get if contains in tsa or tsu
-					filter_docs.push(doc!{ "$or": [doc!{ "tsa": bson::Regex{ pattern: regex::escape(&value), options: String::from("im") } }, doc!{ "tsu": bson::Regex{ pattern: regex::escape(&value), options: String::from("im") } }] });
+					filter_docs.push(doc!{ "$or": [doc!{ "tsa": Regex{ pattern: regex::escape(&value), options: String::from("im") } }, doc!{ "tsu": Regex{ pattern: regex::escape(&value), options: String::from("im") } }] });
 				},
 				"cause" | "effects" | "starred" => {
 					// Get if has or has no cause/effects
