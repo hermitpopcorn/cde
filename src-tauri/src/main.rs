@@ -8,6 +8,7 @@ use mongodb::{bson::{doc, Document}, options::{ClientOptions, FindOptions, Colla
 use std::{time::{SystemTime, UNIX_EPOCH}, sync::Mutex};
 use anyhow::{anyhow, Error, Result};
 use bson::{oid::ObjectId, spec::ElementType, Regex};
+use std::collections::HashMap;
 use maplit::hashmap;
 
 static COLLECTION_NAME: Mutex<Option<String>> = Mutex::new(None);
@@ -36,27 +37,26 @@ async fn db_connect(connection_string: &str, database_name: &str, collection_nam
 }
 
 async fn connect_client(connection_string: &str) -> Result<Client, Error> {
-	/* all that time just to fucking fail. i hate this db
-	let credential = match username.is_some() {
-		true => Some(Credential::builder().username(username).password(password).source(Some(String::from("admin"))).build()),
-		false => None,
-	};
-	let client_options = ClientOptions::builder()
-		.hosts(vec![ServerAddress::Tcp { host: String::from(host), port: port }])
-		.app_name(Some(String::from("MongoDB Compass")))
-		.direct_connection(Some(true))
-		.retry_writes(Some(true))
-		.read_concern(Some(ReadConcern::majority()))
-		.selection_criteria(Some(mongodb::options::SelectionCriteria::ReadPreference(mongodb::options::ReadPreference::Primary)))
-		.write_concern(Some(WriteConcern::builder().w(Some(mongodb::options::Acknowledgment::Majority)).build()))
-		.repl_set_name(replica_set_name)
-		.credential(credential)
-		.connect_timeout(Some(core::time::Duration::new(5, 0)))
-		.server_selection_timeout(Some(core::time::Duration::new(5, 0)))
-		.tls(Some(Tls::Enabled(TlsOptions::builder().allow_invalid_certificates(Some(true)).build())))
-		.build()
-	;
-	*/
+	//! all that time just to fucking fail. i hate this db
+	////let credential = match username.is_some() {
+	////	true => Some(Credential::builder().username(username).password(password).source(Some(String::from("admin"))).build()),
+	////	false => None,
+	////};
+	////let client_options = ClientOptions::builder()
+	////	.hosts(vec![ServerAddress::Tcp { host: String::from(host), port: port }])
+	////	.app_name(Some(String::from("MongoDB Compass")))
+	////	.direct_connection(Some(true))
+	////	.retry_writes(Some(true))
+	////	.read_concern(Some(ReadConcern::majority()))
+	////	.selection_criteria(Some(mongodb::options::SelectionCriteria::ReadPreference(mongodb::options::ReadPreference::Primary)))
+	////	.write_concern(Some(WriteConcern::builder().w(Some(mongodb::options::Acknowledgment::Majority)).build()))
+	////	.repl_set_name(replica_set_name)
+	////	.credential(credential)
+	////	.connect_timeout(Some(core::time::Duration::new(5, 0)))
+	////	.server_selection_timeout(Some(core::time::Duration::new(5, 0)))
+	////	.tls(Some(Tls::Enabled(TlsOptions::builder().allow_invalid_certificates(Some(true)).build())))
+	////	.build()
+	////;
 
 	let client = Client::with_options(ClientOptions::parse(connection_string).await.expect("parsed connection string")).expect("database client");
 
@@ -193,7 +193,7 @@ async fn remove_document(id: Option<&str>) -> tauri::Result<()> {
 }
 
 #[tauri::command]
-async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<std::collections::HashMap<String, String>>) -> tauri::Result<(Vec<Document>, u64, u64)> {
+async fn get_documents(page: Option<u64>, size: Option<u64>, filters: Option<HashMap<String, String>>) -> tauri::Result<(Vec<Document>, u64, u64)> {
 	let collection: Collection<Document>;
 	let get_collection = get_collection();
 	match get_collection {
@@ -367,25 +367,27 @@ async fn get_count_by_columns(columns: Vec<&str>) -> tauri::Result<Vec<Aggregate
 	}
 
 	let mut documents: Vec<AggregateCount> = vec![];
-	let mut unwinds: Vec<String> = vec![];
+	let mut unwinds: Vec<String> = vec![]; // For keeping track of tags that will be deconstructed
 	let mut id: Document = doc!{};
 	for (_index, column) in columns.iter().enumerate() {
-		if column.len() < 1 { continue; }
+		if column.len() < 1 { continue; } // Cancel if empty string
 
 		let mut process_column = String::from(column.to_owned());
+		// If starts with "unwind:", mark column as unwind and remove that "unwind:" part from the string
 		if process_column.starts_with("unwind:") {
 			process_column = process_column.chars().skip(7).take(process_column.len() - 7).collect();
 			unwinds.push(process_column.clone());
 		}
-		let mut dollared = String::from("$"); dollared.push_str(&process_column);
-		id.insert(&process_column, dollared);
+		let mut dollared_column_name = String::from("$"); dollared_column_name.push_str(&process_column);
+		id.insert(&process_column, dollared_column_name);
 	}
 
 	let mut pipeline: Vec<Document> = vec![];
+	// Tell to unwind columns if specified
 	for unwind_column in unwinds {
 		pipeline.push(doc!{
 			"$unwind": doc!{
-				"path": "$".to_owned() + &unwind_column,
+				"path": String::from("$") + &unwind_column,
 				"preserveNullAndEmptyArrays": false,
 			},
 		});
@@ -409,11 +411,12 @@ async fn get_count_by_columns(columns: Vec<&str>) -> tauri::Result<Vec<Aggregate
 	let mut cursor = collection.aggregate(pipeline, None).await.expect("count by column cursor");
 	while cursor.advance().await.unwrap() {
 		let row: Document = cursor.deserialize_current().expect("count by column data");
-		let mut columns: Vec<(String, String)> = vec![];
-		let id = row.get_document("_id").expect("count by column id");
-		for (_index, (key, value)) in id.iter().enumerate() {
+		let mut columns: Vec<(String, String)> = vec![]; // Tuple of column names (identifier, human_readable)
+		let aggregate_id = row.get_document("_id").expect("count by column id");
+		for (_index, (key, value)) in aggregate_id.iter().enumerate() {
 			let column_key = key.clone();
 			if value.element_type() == ElementType::Array {
+				// If aggregate ID is an array, mix them together into one column
 				let column_vec = value.as_array().expect("count by column id value as array").to_owned();
 				let mut value_string: Vec<String> = vec![];
 				for column_value in column_vec {
@@ -433,16 +436,50 @@ async fn get_count_by_columns(columns: Vec<&str>) -> tauri::Result<Vec<Aggregate
 	Ok(documents)
 }
 
+#[tauri::command]
+async fn get_documents_by_tags(tags: Vec<&str>) -> tauri::Result<HashMap<String, Vec<Document>>> {
+	let collection: Collection<Document>;
+	let get_collection = get_collection();
+	match get_collection {
+		Ok(c) => { collection = c },
+		Err(error) => { return Err(tauri::Error::FailedToExecuteApi(tauri::api::Error::Command(String::from(error.to_string())))); }
+	}
+
+	// HashMap to store return value
+	let mut final_map: HashMap<String, Vec<Document>> = hashmap!{};
+	// FindOptions
+	let collation = Collation::builder().locale("en_US").numeric_ordering(true).build();
+	let sort = doc!{ "volume": 1, "page": 1, "created": 1 };
+	let options = FindOptions::builder().sort(sort).collation(collation).build();
+
+	// Get for each tags
+	for tag in tags.iter() {
+		let mut documents: Vec<Document> = vec!{};
+		
+		let mut cursor = collection.find(doc!{ "tags": tag }, options.clone()).await.unwrap();
+		while cursor.advance().await.unwrap() {
+			documents.push(cursor.deserialize_current().unwrap());
+		}
+
+		// Append to HashMap
+		final_map.insert(String::from(*tag), documents);
+	}
+
+	return Ok(final_map);
+}
+
 #[tokio::main]
 async fn main() {
 	let menu = Menu::new()
 		.add_item(CustomMenuItem::new("show_page_data", "Data"))
 		.add_item(CustomMenuItem::new("show_page_statistics", "Statistics"))
+		.add_item(CustomMenuItem::new("show_page_export", "Export"))
 	;
 	fn handle_menu_event(event: WindowMenuEvent) {
 		match event.menu_item_id() {
 			"show_page_data" => event.window().emit("change_page", ChangePagePayload { page: "data".into() }).expect("emit change page event"),
 			"show_page_statistics" => event.window().emit("change_page", ChangePagePayload { page: "statistics".into() }).expect("emit change page event"),
+			"show_page_export" => event.window().emit("change_page", ChangePagePayload { page: "export".into() }).expect("emit change page event"),
 			_ => {},
 		}
 	}
@@ -455,6 +492,7 @@ async fn main() {
 			remove_document,
 			star_document,
 			get_count_by_columns,
+			get_documents_by_tags,
 		])
 		.menu(menu).on_menu_event(handle_menu_event)
 		.run(tauri::generate_context!())

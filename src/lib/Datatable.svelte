@@ -6,6 +6,7 @@
 	import { querystring } from 'svelte-spa-router'
 	import { createEventDispatcher } from 'svelte'
 	import { databaseConnectionStatus } from './EventBus'
+	import { makeTextObject } from '../lib/Helper'
 
 	const dispatch = createEventDispatcher()
 
@@ -110,20 +111,6 @@
 
 	// Format data text (string manipulation)
 	const formatDataText = (tsu, tsa) => {
-		const makeTextObject = (string) => {
-			const isInBrackets = (str: string): boolean => str.startsWith('[') && str.endsWith(']')
-
-			let finalArray = []
-			string = string.match(/(([^[\]]+)|(\[([^\]]+)\]))/g).map((val) => val === "[]" ? null : val)
-			for (let i = 0; i < string.length; i++) {
-				finalArray.push({
-					text: isInBrackets(string[i]) ? string[i].substr(1, string[i].length - 2) : string[i],
-					mark: isInBrackets(string[i]),
-				})
-			}
-			return finalArray
-		}
-
 		let array = []
 		if (tsu) {
 			array.push({ type: 'tsu', texts: makeTextObject(tsu) })

@@ -6,6 +6,7 @@
 	import { listen } from '@tauri-apps/api/event'
 	import Data from './pages/Data.svelte'
 	import Statistics from './pages/Statistics.svelte'
+	import Export from './pages/Export.svelte'
 	import { databaseConnectionStatus, refreshDatatable } from './lib/EventBus'
 	import { PlayIcon } from 'svelte-feather-icons'
 	
@@ -19,6 +20,7 @@
 		'/': Data, // Default route
 		'/data': Data,
 		'/statistics': Statistics,
+		'/export': Export,
 	}
 
 	// Database
