@@ -6,10 +6,18 @@
 
 	let statistics = []
 	let columns = ['type', 'tags']
+	let limitTags: Array<string> = ['subjek', 'predikat', 'objek', 'pelengkap', 'keterangan']
 
 	export const fetchData = async () => {
 		columns = columns.filter(i => i)
 		statistics = await invoke("get_count_by_columns", { columns }) ?? []
+
+		let conditionIndex = columns.indexOf('unwind:tags')
+		if (conditionIndex > -1) {
+			statistics = statistics.filter((row) => {
+				return limitTags.includes(row.columns[conditionIndex][1])
+			})
+		}
 	}
 
 	const formatColumnsMap = i => {
@@ -44,6 +52,7 @@
 <main>
 	<section class="p-4">
 		<div class="d-grid gap-2 mb-2">
+			<label for="column[0]">Group</label>
 			{#each columns as column, index}
 				<div class="input-group">
 					<select class="form-select" name={`column[${index}]`} bind:value={column}>
@@ -57,8 +66,24 @@
 				</div>
 			{/each}
 		</div>
-		<div class="d-flex justify-content-between">
+		<div class="d-flex">
 			<button title="Add new column" type="button" class="btn btn-icon btn-sm btn-primary" on:click={() => { columns = [...columns, ""] }}><PlusIcon size="1.2x" /></button>
+		</div>
+		{#if columns.includes('unwind:tags') }
+			<div class="d-grid gap-2 mb-2">
+				<label for="tag[0]">Limit individual tags to</label>
+				{#each limitTags as tag, index}
+					<div class="input-group">
+						<input class="form-control" type="text" name={`tag[${index}]`} bind:value={tag}>
+						<button class="btn btn-icon btn-danger" type="button" on:click={() => { limitTags = limitTags.filter((_, i) => i !== index); }}><XIcon size="1.2x" /></button>
+					</div>
+				{/each}
+			</div>
+			<div class="d-flex">
+				<button title="Add new column" type="button" class="btn btn-icon btn-sm btn-primary" on:click={() => { columns = [...columns, ""] }}><PlusIcon size="1.2x" /></button>
+			</div>
+		{/if}
+		<div class="d-flex justify-content-end mt-4">
 			<button title="Load" class="btn btn-icon btn-primary" on:click={fetchData}>Load</button>
 		</div>
 	</section>
