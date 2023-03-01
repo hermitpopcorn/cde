@@ -29,6 +29,51 @@
 		}
 		return len
 	}
+
+	const penerjemah = (volume: number) => {
+		if (volume == 1) { return 'Frisian Yuniardi'; }
+		if (volume >= 2 && volume <= 8) { return 'Indra Nugraha'; }
+		if (volume >= 9 && volume <= 12) { return 'Evelyn Limanjaya'; }
+		if (volume >= 13 && volume <= 14) { return 'Olive Irianto'; }
+	}
+
+	const year = (volume: number, index: number) => {
+		if (index == 0) {
+			return {
+				1: 2013,
+				2: 2014,
+				3: 2014,
+				4: 2014,
+				5: 2015,
+				6: 2015,
+				7: 2015,
+				8: 2016,
+				9: 2016,
+				10: 2016,
+				11: 2017,
+				12: 2017,
+				13: 2018,
+				14: 2018,
+			}[volume]
+		} else {
+			return {
+				1: 2016,
+				2: 2016,
+				3: 2016,
+				4: 2016,
+				5: 2017,
+				6: 2017,
+				7: 2017,
+				8: 2017,
+				9: 2019,
+				10: 2019,
+				11: 2019,
+				12: 2019,
+				13: 2019,
+				14: 2020,
+			}[volume]
+		}
+	}
 </script>
 
 <main>
@@ -57,23 +102,19 @@
 	<section id="list">
 		{#if rows}
 			{#each rows_tags as tag, index}
-				<h1>{tag}</h1>
 				<ol start={(index > 0 ? pastLength(index) : 0) + 1}>
 					{#each rows[tag] as row}
 						<li>
-							<p>
-								{#each [makeTextObject(row.tsu), makeTextObject(row.tsa)] as parts}
-									{#each parts as span}
-										{#if span.mark == true}
-											<u>{span.text}</u>
-										{:else}
-											{span.text}
-										{/if}
-									{/each}
-									<br>
-								{/each}
-							</p>
-							<p class="text-end">({title}, jilid {row.volume} halaman {simplifyPage(row.page)})</p>
+							{#each [makeTextObject(row.tsu), makeTextObject(row.tsa)] as parts, index}
+								<p>{#each parts as span}
+									{#if span.mark == true}
+										<u>{span.text}</u>
+									{:else}
+										{span.text}
+									{/if}
+								{/each}</p>
+								<p class="text-end">({#if index == 0}Matsuura Daruma{:else}{penerjemah(row.volume)}{/if}, {year(row.volume, index)}: {title} jilid {row.volume} halaman {simplifyPage(row.page)})</p>
+							{/each}
 						</li>
 					{/each}
 				</ol>
